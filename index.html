@@ -2,29 +2,28 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>Mazement NFT Mint</title>
+  <title>NFT Mint (Owner)</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <style>
-    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 0; background: #0b0c10; color: #eaf5ff; }
-    .wrap { max-width: 720px; margin: 40px auto; padding: 24px; background: #11141a; border: 1px solid #222936; border-radius: 16px; }
-    h1 { margin: 0 0 8px; }
-    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-    .row { display: flex; justify-content: space-between; padding: 10px 12px; background: #0e1218; border: 1px solid #1d2431; border-radius: 10px; }
-    button { cursor: pointer; padding: 10px 14px; border-radius: 10px; border: 1px solid #2a3344; background: #1f2837; color: #eaf5ff; }
-    button[disabled] { opacity: .6; cursor: not-allowed; }
-    input[type=number] { width: 80px; padding: 8px 10px; border-radius: 10px; border: 1px solid #2a3344; background: #0e1218; color: #eaf5ff; }
-    a { color: #8ab4ff; }
-    .muted { opacity: .8 }
-    .error { color: #ff6b6b; }
-    .ok { color: #6bff95; }
-    .stack { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin:0; background:#0b0c10; color:#eaf5ff; }
+    .wrap { max-width: 720px; margin: 40px auto; padding: 24px; background:#11141a; border:1px solid #222936; border-radius:16px; }
+    h1 { margin:0 0 8px; }
+    .row { display:flex; justify-content:space-between; padding:10px 12px; background:#0e1218; border:1px solid #1d2431; border-radius:10px; margin-top:10px; }
+    .stack{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+    button{ cursor:pointer; padding:10px 14px; border-radius:10px; border:1px solid #2a3344; background:#1f2837; color:#eaf5ff; }
+    button[disabled]{ opacity:.6; cursor:not-allowed; }
+    input[type=text]{ width:100%; padding:10px 12px; border-radius:10px; border:1px solid #2a3344; background:#0e1218; color:#eaf5ff; }
+    a{ color:#8ab4ff; }
+    .muted{ opacity:.8 }
+    .error{ color:#ff6b6b }
+    .ok{ color:#6bff95 }
   </style>
-  <!-- Load ethers v6 UMD global -->
-	<script src="https://cdn.jsdelivr.net/npm/ethers@6/dist/ethers.umd.min.js" defer></script>
+  <!-- Ethers v6 (UMD global) -->
+  <script src="https://cdn.jsdelivr.net/npm/ethers@6/dist/ethers.umd.min.js" defer></script>
 </head>
 <body>
   <div class="wrap">
-    <h1>Mint a Mazement NFT</h1>
+    <h1>Owner Mint</h1>
     <p class="muted">Network: <span id="network">—</span></p>
     <div class="stack" style="margin:12px 0 20px;">
       <button id="connectBtn">Connect Wallet</button>
@@ -32,16 +31,15 @@
       <span id="address" class="muted">Not connected</span>
     </div>
 
-    <div class="grid">
-      <div class="row"><span>Price</span><strong id="price">—</strong></div>
-      <div class="row"><span>Supply</span><strong><span id="supply">—</span>/<span id="max">—</span></strong></div>
-    </div>
+    <div class="row"><span>Supply</span><strong><span id="supply">—</span>/<span id="max">—</span></strong></div>
+    <div class="row"><span>Price</span><strong>Free (non-payable)</strong></div>
 
-    <div class="row" style="margin-top:12px; align-items:center; gap:12px;">
-      <div>Quantity</div>
-      <div class="stack">
-        <input type="number" id="qty" min="1" max="10" value="1" />
-        <button id="mintBtn" disabled>Mint</button>
+    <div class="row" style="flex-direction:column; align-items:stretch;">
+      <div class="muted" style="margin-bottom:8px;">Recipient address (or comma-separated for batch)</div>
+      <input type="text" id="to" placeholder="0x... or addr1,addr2,..." />
+      <div class="stack" style="margin-top:10px;">
+        <button id="mintMeBtn" disabled>Mint to me</button>
+        <button id="mintBtn" disabled>Mint to address(es)</button>
       </div>
     </div>
 
@@ -49,141 +47,153 @@
     <p id="link" style="min-height:22px;"></p>
   </div>
 
-  <script>
-    // ---- 👇 EDIT THESE TWO LINES 👇 ----
+  <script defer>
     const CONTRACT_ADDRESS = "0xBBF161212103b329b11A41786607B428dD9ED2A3";
+    // minimal ABI for your functions
     const ABI = [
-	[{"inputs":[],"stateMutability":"nonpayable","type":"constructor"},{"inputs":[{"internalType":"address","name":"sender","type":"address"},
-	{"internalType":"uint256","name":"tokenId","type":"uint256"},{"internalType":"address","name":"owner","type":"address"}],"name":"ERC721IncorrectOwner","type":"error"},{"inputs":[{"internalType":"address","name":"operator","type":"address"},{"internalType":"uint256","name":"tokenId","type":"uint256"}],"name":"ERC721InsufficientApproval","type":"error"},{"inputs":[{"internalType":"address","name":"approver","type":"address"}],"name":"ERC721InvalidApprover","type":"error"},{"inputs":[{"internalType":"address","name":"operator","type":"address"}],"name":"ERC721InvalidOperator","type":"error"},{"inputs":[{"internalType":"address","name":"owner","type":"address"}],"name":"ERC721InvalidOwner","type":"error"},{"inputs":[{"internalType":"address","name":"receiver","type":"address"}],"name":"ERC721InvalidReceiver","type":"error"},{"inputs":[{"internalType":"address","name":"sender","type":"address"}],"name":"ERC721InvalidSender","type":"error"},{"inputs":[{"internalType":"uint256","name":"tokenId","type":"uint256"}],"name":"ERC721NonexistentToken","type":"error"},{"inputs":[{"internalType":"address","name":"owner","type":"address"}],"name":"OwnableInvalidOwner","type":"error"},{"inputs":[{"internalType":"address","name":"account","type":"address"}],"name":"OwnableUnauthorizedAccount","type":"error"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"owner","type":"address"},{"indexed":true,"internalType":"address","name":"approved","type":"address"},{"indexed":true,"internalType":"uint256","name":"tokenId","type":"uint256"}],"name":"Approval","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"owner","type":"address"},{"indexed":true,"internalType":"address","name":"operator","type":"address"},{"indexed":false,"internalType":"bool","name":"approved","type":"bool"}],"name":"ApprovalForAll","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"previousOwner","type":"address"},{"indexed":true,"internalType":"address","name":"newOwner","type":"address"}],"name":"OwnershipTransferred","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"from","type":"address"},{"indexed":true,"internalType":"address","name":"to","type":"address"},{"indexed":true,"internalType":"uint256","name":"tokenId","type":"uint256"}],"name":"Transfer","type":"event"},{"inputs":[],"name":"MAX_SUPPLY","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"tokenId","type":"uint256"}],"name":"approve","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"owner","type":"address"}],"name":"balanceOf","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"filenameExtension","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"filenamePrefix","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"freezeMetadata","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"uint256","name":"tokenId","type":"uint256"}],"name":"getApproved","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"owner","type":"address"},{"internalType":"address","name":"operator","type":"address"}],"name":"isApprovedForAll","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"metadataFrozen","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"to","type":"address"}],"name":"mint","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address[]","name":"tos","type":"address[]"}],"name":"mintBatch","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"name","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"owner","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"tokenId","type":"uint256"}],"name":"ownerOf","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"renounceOwnership","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"from","type":"address"},{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"tokenId","type":"uint256"}],"name":"safeTransferFrom","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"from","type":"address"},{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"tokenId","type":"uint256"},{"internalType":"bytes","name":"data","type":"bytes"}],"name":"safeTransferFrom","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"operator","type":"address"},{"internalType":"bool","name":"approved","type":"bool"}],"name":"setApprovalForAll","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"string","name":"newBaseURI","type":"string"}],"name":"setBaseURI","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"string","name":"e","type":"string"}],"name":"setFilenameExtension","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"string","name":"p","type":"string"}],"name":"setFilenamePrefix","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"bytes4","name":"interfaceId","type":"bytes4"}],"name":"supportsInterface","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"symbol","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"tokenId","type":"uint256"}],"name":"tokenURI","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"totalMinted","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"from","type":"address"},{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"tokenId","type":"uint256"}],"name":"transferFrom","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"newOwner","type":"address"}],"name":"transferOwnership","outputs":[],"stateMutability":"nonpayable","type":"function"}]
+      {"type":"function","name":"totalMinted","stateMutability":"view","inputs":[],"outputs":[{"type":"uint256"}]},
+      {"type":"function","name":"MAX_SUPPLY","stateMutability":"view","inputs":[],"outputs":[{"type":"uint256"}]},
+      {"type":"function","name":"owner","stateMutability":"view","inputs":[],"outputs":[{"type":"address"}]},
+      {"type":"function","name":"mint","stateMutability":"nonpayable","inputs":[{"name":"to","type":"address"}],"outputs":[]},
+      {"type":"function","name":"mintBatch","stateMutability":"nonpayable","inputs":[{"name":"tos","type":"address[]"}],"outputs":[]},
+      {"type":"function","name":"name","stateMutability":"view","inputs":[],"outputs":[{"type":"string"}]},
+      {"type":"function","name":"symbol","stateMutability":"view","inputs":[],"outputs":[{"type":"string"}]}
     ];
-	// -----------------------------------
 
     const POLYGON_CHAIN_ID_HEX = "0x89"; // 137
     const POLYGON_PARAMS = {
       chainId: POLYGON_CHAIN_ID_HEX,
       chainName: "Polygon",
       nativeCurrency: { name: "MATIC", symbol: "MATIC", decimals: 18 },
-      rpcUrls: ["https://polygon-rpc.com", "https://rpc.ankr.com/polygon"],
+      rpcUrls: ["https://polygon-rpc.com","https://rpc.ankr.com/polygon"],
       blockExplorerUrls: ["https://polygonscan.com"]
     };
 
     const el = id => document.getElementById(id);
-    const fmtEth = wei => (Number(wei) / 1e18).toFixed(4) + " ETH";
+    function setStatus(msg, cls="muted"){ const s=el("status"); s.className=cls; s.textContent=msg||""; }
 
-    let provider, signer, contract;
-
-    function setStatus(msg, cls="muted") {
-      const s = el("status");
-      s.className = cls;
-      s.textContent = msg || "";
+    // Prefer Brave Wallet if multiple injected providers are present
+    function getInjectedProvider(){
+      const eth = window.ethereum;
+      if (!eth) return null;
+      if (Array.isArray(eth.providers) && eth.providers.length){
+        const brave = eth.providers.find(p=>p.isBraveWallet);
+        const metamask = eth.providers.find(p=>p.isMetaMask && !p.isBraveWallet);
+        return brave ?? metamask ?? eth.providers[0];
+      }
+      return eth;
     }
 
-    async function connect() {
-      if (!window.ethereum) {
-        setStatus("Please install MetaMask.", "error");
-        return;
-      }
-      try {
-        await window.ethereum.request({ method: "eth_requestAccounts" });
-        provider = new ethers.BrowserProvider(window.ethereum);
+    let provider, signer, contract, ownerAddr, myAddr;
+
+    async function connect(){
+      const injected = getInjectedProvider();
+      if (!injected){ setStatus("No wallet detected. In Brave, enable Brave Wallet.", "error"); return; }
+      try{
+        await injected.request({ method:"eth_requestAccounts" });
+        provider = new ethers.BrowserProvider(injected);
         signer = await provider.getSigner();
-        const addr = await signer.getAddress();
-        el("address").textContent = addr.slice(0, 6) + "…" + addr.slice(-4);
+        myAddr = await signer.getAddress();
+        el("address").textContent = myAddr.slice(0,6)+"…"+myAddr.slice(-4);
 
         const net = await provider.getNetwork();
         el("network").textContent = `${net.name} (${Number(net.chainId)})`;
 
-        if (Number(net.chainId) !== 137) {
+        if (Number(net.chainId) !== 137){
           el("switchBtn").style.display = "inline-block";
           setStatus("Wrong network. Click “Switch to Polygon”.", "error");
-          el("mintBtn").disabled = true;
-        } else {
-          el("switchBtn").style.display = "none";
-          setStatus("");
-          el("mintBtn").disabled = false;
-          // attach contract with signer
-          contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, signer);
-          await refreshReads();
+          el("mintBtn").disabled = true; el("mintMeBtn").disabled = true;
+          return;
         }
-      } catch (err) {
-        console.error(err);
-        setStatus(err?.message || String(err), "error");
+
+        el("switchBtn").style.display = "none";
+        contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, signer);
+
+        // owner gate
+        ownerAddr = await contract.owner();
+        const isOwner = ownerAddr.toLowerCase() === myAddr.toLowerCase();
+        if (!isOwner){
+          setStatus("This contract is owner-only mint. Your wallet is not the owner.", "error");
+          el("mintBtn").disabled = true; el("mintMeBtn").disabled = true;
+        } else {
+          setStatus("");
+          el("mintBtn").disabled = false; el("mintMeBtn").disabled = false;
+          el("to").value = myAddr; // convenience
+        }
+
+        await refreshReads();
+      }catch(err){
+        console.error(err); setStatus(err?.message || String(err), "error");
       }
     }
 
-    async function switchToPolygon() {
-      if (!window.ethereum) return;
-      try {
-        await window.ethereum.request({
-          method: "wallet_switchEthereumChain",
-          params: [{ chainId: POLYGON_CHAIN_ID_HEX }],
-        });
-      } catch (err) {
-        // If the chain is not added to MetaMask, add it
-        if (err && err.code === 4902) {
-          await window.ethereum.request({
-            method: "wallet_addEthereumChain",
-            params: [POLYGON_PARAMS],
-          });
-        } else {
-          throw err;
-        }
+    async function switchToPolygon(){
+      const injected = getInjectedProvider(); if (!injected) return;
+      try{
+        await injected.request({ method:"wallet_switchEthereumChain", params:[{ chainId: POLYGON_CHAIN_ID_HEX }] });
+      }catch(err){
+        if (err && err.code === 4902){
+          await injected.request({ method:"wallet_addEthereumChain", params:[POLYGON_PARAMS] });
+        } else { throw err; }
       }
-      // Re-run connect to refresh state
       await connect();
     }
 
-    async function refreshReads() {
-      try {
-        if (!contract) return;
-        const [price, total, max] = await Promise.all([
-          contract.price(),
-          contract.totalSupply(),
-          contract.maxSupply()
-        ]);
-        el("price").textContent = fmtEth(price);
-        el("supply").textContent = String(total);
+    async function refreshReads(){
+      if (!contract) return;
+      try{
+        const [minted, max] = await Promise.all([contract.totalMinted(), contract.MAX_SUPPLY()]);
+        el("supply").textContent = String(minted);
         el("max").textContent = String(max);
-      } catch (err) {
-        console.warn("Read error:", err);
-      }
+      }catch(e){ console.warn("read error", e); }
     }
 
-    async function mint() {
-      try {
-        if (!contract) return setStatus("Connect wallet first.", "error");
-        const qty = Math.max(1, Math.min(10, parseInt(el("qty").value || "1", 10)));
-        setStatus("Estimating…");
-        const price = await contract.price();
-        const value = price * BigInt(qty);
+    function parseAddresses(text){
+      return text.split(",").map(s=>s.trim()).filter(Boolean);
+    }
 
-        setStatus("Sending transaction…");
-        const tx = await contract.mint(qty, { value });
-        el("mintBtn").disabled = true;
+    async function mintToMe(){
+      if (!contract || !myAddr) return;
+      try{
+        setStatus("Sending tx…");
+        const tx = await contract.mint(myAddr);
+        el("mintBtn").disabled = true; el("mintMeBtn").disabled = true;
         setStatus("Mining…");
-
-        const receipt = await tx.wait();
+        await tx.wait();
         setStatus("✅ Confirmed", "ok");
-        el("link").innerHTML = `<a href="https://polygonscan.com/tx/${tx.hash}" target="_blank" rel="noreferrer">View on Polygonscan</a>`;
+        el("link").innerHTML = `<a href="https://polygonscan.com/tx/${tx.hash}" target="_blank">View on Polygonscan</a>`;
         await refreshReads();
-        el("mintBtn").disabled = false;
-      } catch (err) {
-        console.error(err);
-        const msg = err?.shortMessage || err?.message || String(err);
-        setStatus("❌ " + msg, "error");
-        el("mintBtn").disabled = false;
-      }
+      }catch(err){ console.error(err); setStatus("❌ " + (err?.shortMessage || err?.message || String(err)), "error"); }
+      finally{ el("mintBtn").disabled = false; el("mintMeBtn").disabled = false; }
     }
 
-    // Wire up buttons
-    el("connectBtn").addEventListener("click", connect);
-    el("switchBtn").addEventListener("click", switchToPolygon);
-    el("mintBtn").addEventListener("click", mint);
-
-    // Optional: auto-connect if MetaMask already authorized
-    if (window.ethereum && window.ethereum.selectedAddress) {
-      connect();
+    async function mintTo(){
+      if (!contract) return;
+      const list = parseAddresses(el("to").value);
+      if (!list.length) return setStatus("Enter at least one recipient address.", "error");
+      try{
+        setStatus("Sending tx…");
+        let tx;
+        if (list.length === 1){
+          tx = await contract.mint(list[0]);
+        } else {
+          tx = await contract.mintBatch(list);
+        }
+        el("mintBtn").disabled = true; el("mintMeBtn").disabled = true;
+        setStatus("Mining…");
+        await tx.wait();
+        setStatus("✅ Confirmed", "ok");
+        el("link").innerHTML = `<a href="https://polygonscan.com/tx/${tx.hash}" target="_blank">View on Polygonscan</a>`;
+        await refreshReads();
+      }catch(err){ console.error(err); setStatus("❌ " + (err?.shortMessage || err?.message || String(err)), "error"); }
+      finally{ el("mintBtn").disabled = false; el("mintMeBtn").disabled = false; }
     }
+
+    // wire buttons
+    document.getElementById("connectBtn").addEventListener("click", connect);
+    document.getElementById("switchBtn").addEventListener("click", switchToPolygon);
+    document.getElementById("mintMeBtn").addEventListener("click", mintToMe);
+    document.getElementById("mintBtn").addEventListener("click", mintTo);
   </script>
 </body>
 </html>
