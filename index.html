@@ -2,11 +2,11 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>NFT Mint (Owner)</title>
+  <title>NFT Mint (Owner) — Brave & MetaMask</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <style>
     body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin:0; background:#0b0c10; color:#eaf5ff; }
-    .wrap { max-width: 720px; margin: 40px auto; padding: 24px; background:#11141a; border:1px solid #222936; border-radius:16px; }
+    .wrap { max-width: 820px; margin: 40px auto; padding: 24px; background:#11141a; border:1px solid #222936; border-radius:16px; }
     h1 { margin:0 0 8px; }
     .row { display:flex; justify-content:space-between; padding:10px 12px; background:#0e1218; border:1px solid #1d2431; border-radius:10px; margin-top:10px; }
     .stack{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
@@ -17,6 +17,7 @@
     .muted{ opacity:.8 }
     .error{ color:#ff6b6b }
     .ok{ color:#6bff95 }
+    .pill{ font-size:12px; padding:4px 8px; border-radius:999px; background:#1b2230; border:1px solid #2a3344; }
   </style>
   <!-- Ethers v6 (UMD global) -->
   <script src="https://cdn.jsdelivr.net/npm/ethers@6/dist/ethers.umd.min.js" defer></script>
@@ -25,14 +26,18 @@
   <div class="wrap">
     <h1>Owner Mint</h1>
     <p class="muted">Network: <span id="network">—</span></p>
-    <div class="stack" style="margin:12px 0 20px;">
-      <button id="connectBtn">Connect Wallet</button>
+
+    <!-- Wallet controls -->
+    <div class="stack" style="margin:12px 0 16px;">
+      <button id="connectAuto">Connect (Auto)</button>
+      <button id="connectBrave">Connect with Brave</button>
+      <button id="connectMM">Connect with MetaMask</button>
       <button id="switchBtn" style="display:none;">Switch to Polygon</button>
-      <span id="address" class="muted">Not connected</span>
+      <span id="address" class="pill">Not connected</span>
     </div>
 
     <div class="row"><span>Supply</span><strong><span id="supply">—</span>/<span id="max">—</span></strong></div>
-    <div class="row"><span>Price</span><strong>Free (non-payable)</strong></div>
+    <div class="row"><span>Price</span><strong>Free (owner only)</strong></div>
 
     <div class="row" style="flex-direction:column; align-items:stretch;">
       <div class="muted" style="margin-bottom:8px;">Recipient address (or comma-separated for batch)</div>
@@ -48,8 +53,9 @@
   </div>
 
   <script defer>
+    // ====== EDIT THESE ======
     const CONTRACT_ADDRESS = "0xBBF161212103b329b11A41786607B428dD9ED2A3";
-    // minimal ABI for your functions
+    // Minimal ABI for your contract (from the ABI you shared)
     const ABI = [
       {"type":"function","name":"totalMinted","stateMutability":"view","inputs":[],"outputs":[{"type":"uint256"}]},
       {"type":"function","name":"MAX_SUPPLY","stateMutability":"view","inputs":[],"outputs":[{"type":"uint256"}]},
@@ -59,8 +65,9 @@
       {"type":"function","name":"name","stateMutability":"view","inputs":[],"outputs":[{"type":"string"}]},
       {"type":"function","name":"symbol","stateMutability":"view","inputs":[],"outputs":[{"type":"string"}]}
     ];
+    // ========================
 
-    const POLYGON_CHAIN_ID_HEX = "0x89"; // 137
+    const POLYGON_CHAIN_ID_HEX = "0x89"; // 137 mainnet
     const POLYGON_PARAMS = {
       chainId: POLYGON_CHAIN_ID_HEX,
       chainName: "Polygon",
@@ -72,23 +79,34 @@
     const el = id => document.getElementById(id);
     function setStatus(msg, cls="muted"){ const s=el("status"); s.className=cls; s.textContent=msg||""; }
 
-    // Prefer Brave Wallet if multiple injected providers are present
-    function getInjectedProvider(){
+    // --- Provider selection (Brave + MetaMask + fallback) ---
+    function getAllInjected() {
       const eth = window.ethereum;
-      if (!eth) return null;
-      if (Array.isArray(eth.providers) && eth.providers.length){
-        const brave = eth.providers.find(p=>p.isBraveWallet);
-        const metamask = eth.providers.find(p=>p.isMetaMask && !p.isBraveWallet);
-        return brave ?? metamask ?? eth.providers[0];
-      }
-      return eth;
+      if (!eth) return [];
+      if (Array.isArray(eth.providers) && eth.providers.length) return eth.providers;
+      return [eth];
+    }
+    function pickProvider(kind /* 'auto' | 'brave' | 'metamask' */) {
+      const list = getAllInjected();
+      if (!list.length) return null;
+      const brave = list.find(p => p.isBraveWallet);
+      const metamask = list.find(p => p.isMetaMask && !p.isBraveWallet);
+      if (kind === "brave") return brave ?? null;
+      if (kind === "metamask") return metamask ?? null;
+      // auto: prefer Brave, then MetaMask, then first
+      return brave ?? metamask ?? list[0];
     }
 
-    let provider, signer, contract, ownerAddr, myAddr;
+    let provider, signer, contract, ownerAddr, myAddr, currentInjected = null;
 
-    async function connect(){
-      const injected = getInjectedProvider();
-      if (!injected){ setStatus("No wallet detected. In Brave, enable Brave Wallet.", "error"); return; }
+    async function connect(kind = "auto"){
+      const injected = pickProvider(kind);
+      if (!injected){
+        setStatus("No wallet detected. In Brave, enable Brave Wallet (brave://settings/wallet).", "error");
+        return;
+      }
+      currentInjected = injected;
+
       try{
         await injected.request({ method:"eth_requestAccounts" });
         provider = new ethers.BrowserProvider(injected);
@@ -123,12 +141,15 @@
 
         await refreshReads();
       }catch(err){
-        console.error(err); setStatus(err?.message || String(err), "error");
+        console.error(err);
+        setStatus(err?.message || String(err), "error");
       }
     }
 
     async function switchToPolygon(){
-      const injected = getInjectedProvider(); if (!injected) return;
+      const injected = currentInjected || pickProvider("auto");
+      if (!injected) return setStatus("No wallet available to switch.", "error");
+
       try{
         await injected.request({ method:"wallet_switchEthereumChain", params:[{ chainId: POLYGON_CHAIN_ID_HEX }] });
       }catch(err){
@@ -136,7 +157,7 @@
           await injected.request({ method:"wallet_addEthereumChain", params:[POLYGON_PARAMS] });
         } else { throw err; }
       }
-      await connect();
+      await connect(); // reconnect on the new chain
     }
 
     async function refreshReads(){
@@ -189,11 +210,19 @@
       finally{ el("mintBtn").disabled = false; el("mintMeBtn").disabled = false; }
     }
 
-    // wire buttons
-    document.getElementById("connectBtn").addEventListener("click", connect);
+    // Wire buttons
+    document.getElementById("connectAuto").addEventListener("click", () => connect("auto"));
+    document.getElementById("connectBrave").addEventListener("click", () => connect("brave"));
+    document.getElementById("connectMM").addEventListener("click", () => connect("metamask"));
     document.getElementById("switchBtn").addEventListener("click", switchToPolygon);
     document.getElementById("mintMeBtn").addEventListener("click", mintToMe);
     document.getElementById("mintBtn").addEventListener("click", mintTo);
+
+    // Optional: auto-connect if something is already authorized
+    if (window.ethereum && (window.ethereum.selectedAddress || (Array.isArray(window.ethereum.providers) && window.ethereum.providers.some(p => p.selectedAddress)))) {
+      // try auto connect with best available
+      connect("auto");
+    }
   </script>
 </body>
 </html>
