@@ -53,9 +53,8 @@
   </div>
 
   <script defer>
-    // ====== EDIT THESE ======
+    // ====== CONTRACT (yours) ======
     const CONTRACT_ADDRESS = "0xBBF161212103b329b11A41786607B428dD9ED2A3";
-    // Minimal ABI for your contract (from the ABI you shared)
     const ABI = [
       {"type":"function","name":"totalMinted","stateMutability":"view","inputs":[],"outputs":[{"type":"uint256"}]},
       {"type":"function","name":"MAX_SUPPLY","stateMutability":"view","inputs":[],"outputs":[{"type":"uint256"}]},
@@ -65,7 +64,7 @@
       {"type":"function","name":"name","stateMutability":"view","inputs":[],"outputs":[{"type":"string"}]},
       {"type":"function","name":"symbol","stateMutability":"view","inputs":[],"outputs":[{"type":"string"}]}
     ];
-    // ========================
+    // ==============================
 
     const POLYGON_CHAIN_ID_HEX = "0x89"; // 137 mainnet
     const POLYGON_PARAMS = {
@@ -79,22 +78,48 @@
     const el = id => document.getElementById(id);
     function setStatus(msg, cls="muted"){ const s=el("status"); s.className=cls; s.textContent=msg||""; }
 
-    // --- Provider selection (Brave + MetaMask + fallback) ---
+    // --- EIP-6963 multi-provider discovery (better Brave detection) ---
+    const discovered = new Map();
+    window.addEventListener("eip6963:announceProvider", (ev) => {
+      const d = ev.detail; // { info: { name, rdns, uuid, icon }, provider }
+      discovered.set(d.info.uuid, d);
+    });
+    window.dispatchEvent(new Event("eip6963:requestProvider"));
+
     function getAllInjected() {
+      if (discovered.size) return [...discovered.values()].map(d => d.provider);
       const eth = window.ethereum;
       if (!eth) return [];
       if (Array.isArray(eth.providers) && eth.providers.length) return eth.providers;
       return [eth];
     }
-    function pickProvider(kind /* 'auto' | 'brave' | 'metamask' */) {
+    function pickProvider(kind = "auto") {
       const list = getAllInjected();
       if (!list.length) return null;
-      const brave = list.find(p => p.isBraveWallet);
+
+      // Try by rdns first (official Brave id)
+      const brave6963 = (() => {
+        for (const d of discovered.values()) if (d.info.rdns === "com.brave.wallet") return d.provider;
+        return null;
+      })();
+
+      const brave = brave6963 || list.find(p => p.isBraveWallet);
       const metamask = list.find(p => p.isMetaMask && !p.isBraveWallet);
-      if (kind === "brave") return brave ?? null;
+
+      if (kind === "brave") return brave ?? (list.length === 1 ? list[0] : null);
       if (kind === "metamask") return metamask ?? null;
-      // auto: prefer Brave, then MetaMask, then first
       return brave ?? metamask ?? list[0];
+    }
+
+    function attachProviderEvents(injected) {
+      if (!injected || injected.__hasHandlers) return;
+      injected.__hasHandlers = true;
+      injected.on?.("accountsChanged", () => connect(window.localStorage.getItem("walletPref") || "auto"));
+      injected.on?.("chainChanged", () => connect(window.localStorage.getItem("walletPref") || "auto"));
+      injected.on?.("disconnect", () => {
+        setStatus("Wallet disconnected.", "error");
+        el("address").textContent = "Not connected";
+      });
     }
 
     let provider, signer, contract, ownerAddr, myAddr, currentInjected = null;
@@ -106,6 +131,7 @@
         return;
       }
       currentInjected = injected;
+      attachProviderEvents(injected);
 
       try{
         await injected.request({ method:"eth_requestAccounts" });
@@ -157,7 +183,7 @@
           await injected.request({ method:"wallet_addEthereumChain", params:[POLYGON_PARAMS] });
         } else { throw err; }
       }
-      await connect(); // reconnect on the new chain
+      await connect(window.localStorage.getItem("walletPref") || "auto"); // reconnect on the new chain
     }
 
     async function refreshReads(){
@@ -169,60 +195,85 @@
       }catch(e){ console.warn("read error", e); }
     }
 
+    // ---- Address helpers ----
+    function normalizeAddress(s){
+      try { return ethers.getAddress(s.trim()); } catch { return null; }
+    }
     function parseAddresses(text){
-      return text.split(",").map(s=>s.trim()).filter(Boolean);
+      return text.split(",").map(s=>s.trim()).filter(Boolean).map(normalizeAddress).filter(Boolean);
     }
 
     async function mintToMe(){
       if (!contract || !myAddr) return;
       try{
+        const me = normalizeAddress(myAddr);
+        if (!me) return setStatus("Invalid sender address.", "error");
+
         setStatus("Sending tx…");
-        const tx = await contract.mint(myAddr);
-        el("mintBtn").disabled = true; el("mintMeBtn").disabled = true;
+        disableMint(true);
+        const tx = await contract.mint(me);
         setStatus("Mining…");
         await tx.wait();
         setStatus("✅ Confirmed", "ok");
-        el("link").innerHTML = `<a href="https://polygonscan.com/tx/${tx.hash}" target="_blank">View on Polygonscan</a>`;
+        el("link").innerHTML = `<a href="https://polygonscan.com/tx/${tx.hash}" target="_blank" rel="noreferrer">View on Polygonscan</a>`;
         await refreshReads();
-      }catch(err){ console.error(err); setStatus("❌ " + (err?.shortMessage || err?.message || String(err)), "error"); }
-      finally{ el("mintBtn").disabled = false; el("mintMeBtn").disabled = false; }
+      }catch(err){
+        console.error(err); setStatus("❌ " + (err?.shortMessage || err?.message || String(err)), "error");
+      }finally{
+        disableMint(false);
+      }
     }
 
     async function mintTo(){
       if (!contract) return;
       const list = parseAddresses(el("to").value);
-      if (!list.length) return setStatus("Enter at least one recipient address.", "error");
+      if (!list.length) return setStatus("Enter at least one valid recipient address.", "error");
       try{
         setStatus("Sending tx…");
+        disableMint(true);
         let tx;
         if (list.length === 1){
           tx = await contract.mint(list[0]);
         } else {
+          // (Optional) you can cap very large batches to avoid running out of gas
+          if (list.length > 100) return setStatus("Batch too large. Try 100 or fewer.", "error");
           tx = await contract.mintBatch(list);
         }
-        el("mintBtn").disabled = true; el("mintMeBtn").disabled = true;
         setStatus("Mining…");
         await tx.wait();
         setStatus("✅ Confirmed", "ok");
-        el("link").innerHTML = `<a href="https://polygonscan.com/tx/${tx.hash}" target="_blank">View on Polygonscan</a>`;
+        el("link").innerHTML = `<a href="https://polygonscan.com/tx/${tx.hash}" target="_blank" rel="noreferrer">View on Polygonscan</a>`;
         await refreshReads();
-      }catch(err){ console.error(err); setStatus("❌ " + (err?.shortMessage || err?.message || String(err)), "error"); }
-      finally{ el("mintBtn").disabled = false; el("mintMeBtn").disabled = false; }
+      }catch(err){
+        console.error(err); setStatus("❌ " + (err?.shortMessage || err?.message || String(err)), "error");
+      }finally{
+        disableMint(false);
+      }
     }
 
-    // Wire buttons
-    document.getElementById("connectAuto").addEventListener("click", () => connect("auto"));
-    document.getElementById("connectBrave").addEventListener("click", () => connect("brave"));
-    document.getElementById("connectMM").addEventListener("click", () => connect("metamask"));
+    function disableMint(disabled){
+      el("mintBtn").disabled = disabled;
+      el("mintMeBtn").disabled = disabled;
+    }
+
+    // Wire buttons + remember preference
+    const remember = (k) => { try { localStorage.setItem("walletPref", k); } catch {} };
+    document.getElementById("connectAuto").addEventListener("click", () => { remember("auto"); connect("auto"); });
+    document.getElementById("connectBrave").addEventListener("click", () => { remember("brave"); connect("brave"); });
+    document.getElementById("connectMM").addEventListener("click", () => { remember("metamask"); connect("metamask"); });
     document.getElementById("switchBtn").addEventListener("click", switchToPolygon);
     document.getElementById("mintMeBtn").addEventListener("click", mintToMe);
     document.getElementById("mintBtn").addEventListener("click", mintTo);
 
-    // Optional: auto-connect if something is already authorized
-    if (window.ethereum && (window.ethereum.selectedAddress || (Array.isArray(window.ethereum.providers) && window.ethereum.providers.some(p => p.selectedAddress)))) {
-      // try auto connect with best available
-      connect("auto");
-    }
+    // Auto-connect to last chosen wallet after a tiny delay (lets 6963 providers announce)
+    (function autoConnect() {
+      const last = (() => { try { return localStorage.getItem("walletPref") } catch { return null } })();
+      setTimeout(() => {
+        const hasProviders = getAllInjected().length || discovered.size;
+        if (hasProviders && last) connect(last);
+      }, 200);
+    })();
   </script>
 </body>
 </html>
+
