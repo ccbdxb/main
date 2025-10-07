@@ -12,20 +12,25 @@
     .stack{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
     button{ cursor:pointer; padding:10px 14px; border-radius:10px; border:1px solid #2a3344; background:#1f2837; color:#eaf5ff; }
     button[disabled]{ opacity:.6; cursor:not-allowed; }
-    input[type=text]{ width:100%; padding:10px 12px; border-radius:10px; border:1px solid #2a3344; background:#0e1218; color:#eaf5ff; }
+    input[type=text], textarea{ width:100%; padding:10px 12px; border-radius:10px; border:1px solid #2a3344; background:#0e1218; color:#eaf5ff; }
     a{ color:#8ab4ff; }
     .muted{ opacity:.8 }
     .error{ color:#ff6b6b }
     .ok{ color:#6bff95 }
     .pill{ font-size:12px; padding:4px 8px; border-radius:999px; background:#1b2230; border:1px solid #2a3344; }
+    .kvs{ display:flex; gap:8px; align-items:center; flex-wrap:wrap;}
+    .kvs span{ font-size:12px; opacity:.85; }
   </style>
-  <!-- Ethers v6 (UMD global) -->
   <script src="https://cdn.jsdelivr.net/npm/ethers@6/dist/ethers.umd.min.js" defer></script>
 </head>
 <body>
   <div class="wrap">
     <h1>Owner Mint</h1>
-    <p class="muted">Network: <span id="network">—</span></p>
+    <div class="kvs">
+      <span>Network: <strong id="network">—</strong></span>
+      <span>Contract: <a id="contractLink" href="#" target="_blank" rel="noreferrer">—</a></span>
+      <span>Name/Symbol: <strong id="ns">—</strong></span>
+    </div>
 
     <!-- Wallet controls -->
     <div class="stack" style="margin:12px 0 16px;">
@@ -36,12 +41,12 @@
       <span id="address" class="pill">Not connected</span>
     </div>
 
-    <div class="row"><span>Supply</span><strong><span id="supply">—</span>/<span id="max">—</span></strong></div>
+    <div class="row"><span>Supply</span><strong><span id="supply">—</span>/<span id="max">—</span> (<span id="left">—</span> left)</strong></div>
     <div class="row"><span>Price</span><strong>Free (owner only)</strong></div>
 
     <div class="row" style="flex-direction:column; align-items:stretch;">
-      <div class="muted" style="margin-bottom:8px;">Recipient address (or comma-separated for batch)</div>
-      <input type="text" id="to" placeholder="0x... or addr1,addr2,..." />
+      <div class="muted" style="margin-bottom:8px;">Recipient address (single) or multiple (comma, space, or newline-separated)</div>
+      <textarea id="to" rows="3" placeholder="0x... or paste addr1, addr2, addr3..."></textarea>
       <div class="stack" style="margin-top:10px;">
         <button id="mintMeBtn" disabled>Mint to me</button>
         <button id="mintBtn" disabled>Mint to address(es)</button>
@@ -53,9 +58,8 @@
   </div>
 
   <script defer>
-    // ====== CONTRACT (yours) ======
-    // const CONTRACT_ADDRESS = "0xBBF161212103b329b11A41786607B428dD9ED2A3"; previous test contract
-    const CONTRACT_ADDRESS = "0x20e28b37f331c9d94f1685f5fa1d1fc6d59d69b6";
+    // ====== CONTRACT ======
+    const RAW_CONTRACT_ADDRESS = "0x20e28b37f331c9d94f1685f5fa1d1fc6d59d69b6"; // your test contract
     const ABI = [
       {"type":"function","name":"totalMinted","stateMutability":"view","inputs":[],"outputs":[{"type":"uint256"}]},
       {"type":"function","name":"MAX_SUPPLY","stateMutability":"view","inputs":[],"outputs":[{"type":"uint256"}]},
@@ -65,9 +69,9 @@
       {"type":"function","name":"name","stateMutability":"view","inputs":[],"outputs":[{"type":"string"}]},
       {"type":"function","name":"symbol","stateMutability":"view","inputs":[],"outputs":[{"type":"string"}]}
     ];
-    // ==============================
+    // =======================
 
-    const POLYGON_CHAIN_ID_HEX = "0x89"; // 137 mainnet
+    const POLYGON_CHAIN_ID_HEX = "0x89"; // 137
     const POLYGON_PARAMS = {
       chainId: POLYGON_CHAIN_ID_HEX,
       chainName: "Polygon",
@@ -78,12 +82,12 @@
 
     const el = id => document.getElementById(id);
     function setStatus(msg, cls="muted"){ const s=el("status"); s.className=cls; s.textContent=msg||""; }
+    function linkPolygonscan(path){ return `https://polygonscan.com/${path}`; }
 
-    // --- EIP-6963 multi-provider discovery (better Brave detection) ---
+    // --- EIP-6963 discovery ---
     const discovered = new Map();
     window.addEventListener("eip6963:announceProvider", (ev) => {
-      const d = ev.detail; // { info: { name, rdns, uuid, icon }, provider }
-      discovered.set(d.info.uuid, d);
+      const d = ev.detail; discovered.set(d.info.uuid, d);
     });
     window.dispatchEvent(new Event("eip6963:requestProvider"));
 
@@ -98,12 +102,10 @@
       const list = getAllInjected();
       if (!list.length) return null;
 
-      // Try by rdns first (official Brave id)
       const brave6963 = (() => {
         for (const d of discovered.values()) if (d.info.rdns === "com.brave.wallet") return d.provider;
         return null;
       })();
-
       const brave = brave6963 || list.find(p => p.isBraveWallet);
       const metamask = list.find(p => p.isMetaMask && !p.isBraveWallet);
 
@@ -115,15 +117,36 @@
     function attachProviderEvents(injected) {
       if (!injected || injected.__hasHandlers) return;
       injected.__hasHandlers = true;
-      injected.on?.("accountsChanged", () => connect(window.localStorage.getItem("walletPref") || "auto"));
-      injected.on?.("chainChanged", () => connect(window.localStorage.getItem("walletPref") || "auto"));
+      injected.on?.("accountsChanged", () => connect(localStorage.getItem("walletPref") || "auto"));
+      injected.on?.("chainChanged", () => connect(localStorage.getItem("walletPref") || "auto"));
       injected.on?.("disconnect", () => {
         setStatus("Wallet disconnected.", "error");
         el("address").textContent = "Not connected";
+        disableMint(true);
       });
     }
 
     let provider, signer, contract, ownerAddr, myAddr, currentInjected = null;
+    let CONTRACT_ADDRESS;
+
+    // ---- Address helpers ----
+    function normalizeAddress(s){
+      try { return ethers.getAddress(s.trim()); } catch { return null; }
+    }
+    function parseAddresses(text){
+      // split on comma, whitespace, or newline; drop empties; checksum-validate
+      return text
+        .split(/[\s,]+/g)
+        .map(s=>s.trim())
+        .filter(Boolean)
+        .map(normalizeAddress)
+        .filter(Boolean);
+    }
+
+    function disableMint(disabled){
+      el("mintBtn").disabled = !!disabled;
+      el("mintMeBtn").disabled = !!disabled;
+    }
 
     async function connect(kind = "auto"){
       const injected = pickProvider(kind);
@@ -139,37 +162,54 @@
         provider = new ethers.BrowserProvider(injected);
         signer = await provider.getSigner();
         myAddr = await signer.getAddress();
-        el("address").textContent = myAddr.slice(0,6)+"…"+myAddr.slice(-4);
+        el("address").textContent = `${myAddr.slice(0,6)}…${myAddr.slice(-4)}`;
+
+        // Normalize contract address to checksum early (prevents subtle issues)
+        try {
+          CONTRACT_ADDRESS = ethers.getAddress(RAW_CONTRACT_ADDRESS);
+        } catch {
+          setStatus("Invalid contract address configured.", "error");
+          disableMint(true);
+          return;
+        }
 
         const net = await provider.getNetwork();
         el("network").textContent = `${net.name} (${Number(net.chainId)})`;
+        el("contractLink").textContent = `${CONTRACT_ADDRESS.slice(0,6)}…${CONTRACT_ADDRESS.slice(-4)}`;
+        el("contractLink").href = linkPolygonscan(`address/${CONTRACT_ADDRESS}`);
 
         if (Number(net.chainId) !== 137){
           el("switchBtn").style.display = "inline-block";
           setStatus("Wrong network. Click “Switch to Polygon”.", "error");
-          el("mintBtn").disabled = true; el("mintMeBtn").disabled = true;
+          disableMint(true);
           return;
         }
 
         el("switchBtn").style.display = "none";
         contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, signer);
 
-        // owner gate
+        // Owner gate
         ownerAddr = await contract.owner();
         const isOwner = ownerAddr.toLowerCase() === myAddr.toLowerCase();
         if (!isOwner){
           setStatus("This contract is owner-only mint. Your wallet is not the owner.", "error");
-          el("mintBtn").disabled = true; el("mintMeBtn").disabled = true;
+          disableMint(true);
         } else {
           setStatus("");
-          el("mintBtn").disabled = false; el("mintMeBtn").disabled = false;
-          el("to").value = myAddr; // convenience
+          disableMint(false);
+          // only autofill if empty (so we don't clobber pasted lists)
+          if (!el("to").value.trim()) el("to").value = myAddr;
         }
 
         await refreshReads();
+
+        // Optional: live update supply on Transfer events (comment out if your RPC doesn't support logs)
+        // provider.on({ address: CONTRACT_ADDRESS, topics: [ethers.id("Transfer(address,address,uint256)")] }, refreshReads);
       }catch(err){
         console.error(err);
-        setStatus(err?.message || String(err), "error");
+        const msg = (err && (err.shortMessage || err.message)) || String(err);
+        setStatus(msg, "error");
+        disableMint(true);
       }
     }
 
@@ -182,26 +222,33 @@
       }catch(err){
         if (err && err.code === 4902){
           await injected.request({ method:"wallet_addEthereumChain", params:[POLYGON_PARAMS] });
-        } else { throw err; }
+        } else {
+          // user rejected or other error
+          setStatus(err?.message || "Network switch failed.", "error");
+          return;
+        }
       }
-      await connect(window.localStorage.getItem("walletPref") || "auto"); // reconnect on the new chain
+      await connect(localStorage.getItem("walletPref") || "auto");
     }
 
     async function refreshReads(){
       if (!contract) return;
       try{
-        const [minted, max] = await Promise.all([contract.totalMinted(), contract.MAX_SUPPLY()]);
-        el("supply").textContent = String(minted);
-        el("max").textContent = String(max);
-      }catch(e){ console.warn("read error", e); }
-    }
-
-    // ---- Address helpers ----
-    function normalizeAddress(s){
-      try { return ethers.getAddress(s.trim()); } catch { return null; }
-    }
-    function parseAddresses(text){
-      return text.split(",").map(s=>s.trim()).filter(Boolean).map(normalizeAddress).filter(Boolean);
+        const [minted, max, name, symbol] = await Promise.all([
+          contract.totalMinted(),
+          contract.MAX_SUPPLY(),
+          contract.name(),
+          contract.symbol()
+        ]);
+        const sMinted = BigInt(minted).toString();
+        const sMax = BigInt(max).toString();
+        el("supply").textContent = sMinted;
+        el("max").textContent = sMax;
+        el("left").textContent = (BigInt(max) - BigInt(minted)).toString();
+        el("ns").textContent = `${name} / ${symbol}`;
+      }catch(e){
+        console.warn("read error", e);
+      }
     }
 
     async function mintToMe(){
@@ -214,12 +261,14 @@
         disableMint(true);
         const tx = await contract.mint(me);
         setStatus("Mining…");
-        await tx.wait();
+        const receipt = await tx.wait();
         setStatus("✅ Confirmed", "ok");
-        el("link").innerHTML = `<a href="https://polygonscan.com/tx/${tx.hash}" target="_blank" rel="noreferrer">View on Polygonscan</a>`;
+        el("link").innerHTML = `<a href="${linkPolygonscan(`tx/${receipt.hash}`)}" target="_blank" rel="noreferrer">View on Polygonscan</a>`;
         await refreshReads();
       }catch(err){
-        console.error(err); setStatus("❌ " + (err?.shortMessage || err?.message || String(err)), "error");
+        console.error(err);
+        if (err?.code === 4001) setStatus("User rejected the transaction.", "error");
+        else setStatus("❌ " + (err?.shortMessage || err?.message || String(err)), "error");
       }finally{
         disableMint(false);
       }
@@ -236,25 +285,21 @@
         if (list.length === 1){
           tx = await contract.mint(list[0]);
         } else {
-          // (Optional) you can cap very large batches to avoid running out of gas
           if (list.length > 100) return setStatus("Batch too large. Try 100 or fewer.", "error");
           tx = await contract.mintBatch(list);
         }
         setStatus("Mining…");
-        await tx.wait();
+        const receipt = await tx.wait();
         setStatus("✅ Confirmed", "ok");
-        el("link").innerHTML = `<a href="https://polygonscan.com/tx/${tx.hash}" target="_blank" rel="noreferrer">View on Polygonscan</a>`;
+        el("link").innerHTML = `<a href="${linkPolygonscan(`tx/${receipt.hash}`)}" target="_blank" rel="noreferrer">View on Polygonscan</a>`;
         await refreshReads();
       }catch(err){
-        console.error(err); setStatus("❌ " + (err?.shortMessage || err?.message || String(err)), "error");
+        console.error(err);
+        if (err?.code === 4001) setStatus("User rejected the transaction.", "error");
+        else setStatus("❌ " + (err?.shortMessage || err?.message || String(err)), "error");
       }finally{
         disableMint(false);
       }
-    }
-
-    function disableMint(disabled){
-      el("mintBtn").disabled = disabled;
-      el("mintMeBtn").disabled = disabled;
     }
 
     // Wire buttons + remember preference
@@ -266,7 +311,7 @@
     document.getElementById("mintMeBtn").addEventListener("click", mintToMe);
     document.getElementById("mintBtn").addEventListener("click", mintTo);
 
-    // Auto-connect to last chosen wallet after a tiny delay (lets 6963 providers announce)
+    // Auto-connect to last chosen wallet after a tiny delay
     (function autoConnect() {
       const last = (() => { try { return localStorage.getItem("walletPref") } catch { return null } })();
       setTimeout(() => {
@@ -277,4 +322,3 @@
   </script>
 </body>
 </html>
-
