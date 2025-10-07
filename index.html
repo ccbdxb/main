@@ -265,9 +265,7 @@
     function disableMint(disabled){ el("mintBtn").disabled = !!disabled; el("mintMeBtn").disabled = !!disabled; }
     function updateMintButtonsEnabled(){
       const isOwner = ownerAddr && myAddr && ownerAddr.toLowerCase() === myAddr.toLowerCase();
-      const claim = !!el("claimNow").checked;
-      const hasShip = (el("shipping").value || "").trim().length > 0;
-      const ready = !!contract && isOwner && (!claim || hasShip);
+      const ready = !!contract && isOwner;  // don't gate on claim/shipping here
       el("mintMeBtn").disabled = !ready;
       el("mintBtn").disabled   = !ready;
     }
