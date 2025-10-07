@@ -29,6 +29,7 @@
     .divider{ height:1px; background:#1d2431; margin:14px 0; }
     .tiny{ font-size:12px; opacity:.85 }
     .links a{ display:block; }
+    .req{ color:#ffb86c }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/ethers@6/dist/ethers.umd.min.js" defer></script>
 </head>
@@ -67,12 +68,15 @@
 
       <div class="grid" style="margin-top:10px;">
         <div class="col">
-          <label><input type="checkbox" id="claimNow" /> Claim physical now (in the same tx)</label>
-          <div class="tiny muted">If enabled, we’ll hash the shipping info below and pass it to <code>mintFor</code>.</div>
+          <!-- Claim is mandatory: show as checked & locked -->
+          <label><input type="checkbox" id="claimNow" checked disabled /> Claim physical now <span class="req">(required)</span></label>
+          <div class="tiny muted">Claiming is mandatory. Shipping info is required for every mint.</div>
+          <div class="tiny" id="claimState" style="margin-top:6px;"></div>
         </div>
         <div class="col">
-          <label for="shipping">Shipping info (free text, will be hashed to bytes32)</label>
-          <input id="shipping" type="text" placeholder="Name, email, delivery address..."/>
+          <label for="shipping">Shipping info <span class="req">(required)</span></label>
+          <input id="shipping" type="text" placeholder="Name, email, delivery address..." />
+          <div class="tiny muted">We hash a canonical JSON of this text (Keccak-256) and submit it on-chain.</div>
         </div>
       </div>
 
@@ -81,7 +85,7 @@
         <button id="mintBtn" disabled>Mint to address(es)</button>
       </div>
       <div class="tiny muted" style="margin-top:6px;">
-        Each mint calls <code>mintFor(to, claimNow, shippingInfoHash)</code> and sends <code>requiredWei()</code> as <code>msg.value</code>.
+        Each mint calls <code>mintFor(to, true, shippingInfoHash)</code> and sends <code>requiredWei()</code> as <code>msg.value</code>. Batch minting is limited to a single recipient when claim is required.
       </div>
     </div>
 
@@ -142,54 +146,23 @@
     // --- Email webhook (Google Apps Script Web App URL) ---
     const EMAIL_WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbz_FeczSgjnUyIKUmi5PinPuyjc9g4bh9lhafeX2Z1r9hK-jeseMPaB9hFGUk4Bp-4eSA/exec";
 
-    /**
-     * Sends the mint + shipping details to your email via Apps Script.
-     * Shows success/failure on the page status line and logs details to the console.
-     */
-    // Replace your existing sendClaimEmail with this version.
+    // CORS-friendly email sender
     async function sendClaimEmail({ wallet, tokenId, txHash, claimNow, shippingText, shippingHash }) {
-      if (!EMAIL_WEBHOOK_URL) {
-        setStatus("Email not configured (EMAIL_WEBHOOK_URL is empty).", "error");
-        return;
+      if (!EMAIL_WEBHOOK_URL) { setStatus("Email not configured (EMAIL_WEBHOOK_URL is empty).", "error"); return; }
+      const payload = { wallet, tokenId, txHash, claimNow: !!claimNow, shippingText: shippingText || "", shippingHash: shippingHash || "", timestamp: new Date().toISOString(), schema: "v1" };
+      try {
+        await fetch(EMAIL_WEBHOOK_URL, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(payload) });
+        setStatus("Email webhook sent (simple POST). Check inbox/spam.", "ok");
+      } catch (e1) {
+        try {
+          await fetch(EMAIL_WEBHOOK_URL, { method: "POST", mode: "no-cors", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(payload) });
+          setStatus("Email sent (no-cors fallback). Check inbox/spam.", "ok");
+        } catch (e2) {
+          console.error("Email webhook failed:", e2);
+          setStatus("Email webhook error: " + (e2.message || String(e2)), "error");
+        }
       }
-    const payload = {
-      wallet, tokenId, txHash, claimNow: !!claimNow,
-      shippingText: shippingText || "",
-      shippingHash: shippingHash || "",
-      timestamp: new Date().toISOString(),
-      schema: "v1"
-    };
-
-    // 1) Try a simple CORS-friendly POST (no preflight) using text/plain.
-    try {
-      const res = await fetch(EMAIL_WEBHOOK_URL, {
-        method: "POST",
-        // Important: text/plain avoids the OPTIONS preflight that Apps Script often chokes on.
-        headers: { "Content-Type": "text/plain;charset=utf-8" },
-        body: JSON.stringify(payload)
-      });
-      // If the server doesn’t return proper CORS headers, the fetch may still succeed but be unreadable.
-      // If we got here without throwing, we consider it sent.
-      setStatus("Email webhook sent (simple POST). Check inbox/spam.", "ok");
-      return;
-    } catch (e1) {
-      console.warn("Email webhook simple POST failed, falling back to no-cors:", e1);
     }
-
-    // 2) Fire-and-forget fallback (no-cors). We cannot read the response, but Apps Script will receive it.
-    try {
-      await fetch(EMAIL_WEBHOOK_URL, {
-        method: "POST",
-        mode: "no-cors",
-        headers: { "Content-Type": "text/plain;charset=utf-8" },
-        body: JSON.stringify(payload)
-      });
-      setStatus("Email sent (no-cors fallback). Check inbox/spam.", "ok");
-    } catch (e2) {
-      console.error("Email webhook failed:", e2);
-      setStatus("Email webhook error: " + (e2.message || String(e2)), "error");
-    }
-  }
 
     const POLYGON_CHAIN_ID_HEX = "0x89"; // 137
     const POLYGON_PARAMS = {
@@ -255,12 +228,26 @@
     }
     function formatMatic(wei){ try { return `${ethers.formatEther(wei)} MATIC`; } catch { return `${wei.toString()} wei`; } }
     function formatUsdCents(c){ try{ const n = BigInt(c); const d = (n/100n).toString(); const r = (n%100n).toString().padStart(2,"0"); return `$${d}.${r}`; } catch { return `$${c}`; } }
-    function shippingHashFromInput(){
-      const s = el("shipping").value.trim();
-      if (!s) return "0x" + "00".repeat(32); // bytes32 zero if none
-      return ethers.id(s); // keccak256(utf8)
+
+    // Canonical shipping (mandatory)
+    function canonicalShippingJson() {
+      const text = el("shipping").value.trim().replace(/\s+/g, " ");
+      return JSON.stringify({ v: "1", text });
     }
-    const disableMint = (disabled)=>{ el("mintBtn").disabled = !!disabled; el("mintMeBtn").disabled = !!disabled; };
+    function shippingHashFromInput(){
+      const canonical = canonicalShippingJson();
+      const obj = JSON.parse(canonical);
+      if (!obj.text) return null; // required
+      return ethers.id(canonical);
+    }
+
+    function disableMint(disabled){ el("mintBtn").disabled = !!disabled; el("mintMeBtn").disabled = !!disabled; }
+    function updateMintButtonsEnabled(){
+      const ship = (el("shipping").value || "").trim();
+      const ready = !!ship && !!contract && ownerAddr && myAddr && ownerAddr.toLowerCase() === myAddr.toLowerCase();
+      el("mintMeBtn").disabled = !ready;
+      el("mintBtn").disabled = !ready;
+    }
 
     async function connect(kind="auto"){
       const injected = pickProvider(kind);
@@ -303,11 +290,10 @@
           disableMint(true);
         } else {
           setStatus("");
-          disableMint(false);
           if (!el("to").value.trim()) el("to").value = myAddr;
+          await refreshReads();
+          updateMintButtonsEnabled();
         }
-
-        await refreshReads();
       }catch(err){
         console.error(err);
         setStatus(err?.shortMessage || err?.message || String(err), "error");
@@ -353,40 +339,65 @@
 
         el("claimOpen").textContent = _claimOpen ? "true" : "false";
         el("deliveryOpen").textContent = _deliveryOpen ? "true" : "false";
+        el("claimState").textContent = _claimOpen ? "" : "Claim is currently CLOSED on the contract. Minting will revert.";
+        updateMintButtonsEnabled();
       }catch(e){
         console.warn("read error", e);
       }
     }
 
-    async function mintOne(to, claimNow, shippingHash){
+    // Preflight simulation to catch clear revert reasons
+    const iface = new ethers.Interface(ABI);
+    function decodeRevert(e) {
+      try {
+        const data = e?.data || e?.info?.error?.data || e?.error?.data;
+        if (typeof data === "string" && data.startsWith("0x")) {
+          try { const perr = iface.parseError(data); return `Reverted: ${perr?.name}(${perr?.args?.map(String).join(", ") || ""})`; }
+          catch { /* ignore */ }
+        }
+      } catch {}
+      return e?.shortMessage || e?.message || "Execution reverted";
+    }
+    async function preflightMint(to, shippingHash, valueWei) {
+      try {
+        await contract.mintFor.staticCall(to, true, shippingHash, { value: valueWei });
+        return { ok: true };
+      } catch (e) {
+        return { ok: false, msg: decodeRevert(e), raw: e };
+      }
+    }
+
+    async function mintOne(to, shippingHash){
       const overrides = currentPriceWei > 0n ? { value: currentPriceWei } : {};
-      return contract.mintFor(to, !!claimNow, shippingHash, overrides);
+      return contract.mintFor(to, true, shippingHash, overrides);
     }
 
     async function mintToMe(){
       if (!contract || !myAddr) return;
+      const hash = shippingHashFromInput();
+      if (!hash) { setStatus("Please enter shipping info (required).", "error"); return; }
+
       try{
         const me = normalizeAddress(myAddr); if (!me) return setStatus("Invalid sender address.", "error");
-
-        const claimNow = !!el("claimNow").checked;
-        const shippingHash = claimNow ? shippingHashFromInput() : ("0x" + "00".repeat(32));
+        // PRE-FLIGHT
+        const sim = await preflightMint(me, hash, currentPriceWei);
+        if (!sim.ok) { setStatus(sim.msg, "error"); return; }
 
         setStatus("Sending tx…");
         disableMint(true);
-        const tx = await mintOne(me, claimNow, shippingHash);
+        const tx = await mintOne(me, hash);
         setStatus("Mining…");
         const receipt = await tx.wait();
         setStatus("✅ Confirmed", "ok");
 
-        // --- EMAIL: send details after success ---
-        const shippingText = claimNow ? el("shipping").value.trim() : "";
+        const canonical = canonicalShippingJson();
         await sendClaimEmail({
           wallet: myAddr,
-          tokenId: "(unknown)", // simple; can be parsed from logs later if you want
+          tokenId: "(unknown)",
           txHash: receipt.hash,
-          claimNow,
-          shippingText,
-          shippingHash
+          claimNow: true,
+          shippingText: canonical,
+          shippingHash: hash
         });
 
         const a = document.createElement("a");
@@ -408,44 +419,42 @@
       if (!contract) return;
       const list = parseAddresses(el("to").value);
       if (!list.length) return setStatus("Enter at least one valid recipient address.", "error");
+      if (list.length > 1) return setStatus("With mandatory claim, mint to one address at a time.", "error");
 
-      const claimNow = !!el("claimNow").checked;
-      const shippingHash = claimNow ? shippingHashFromInput() : ("0x" + "00".repeat(32));
-      if (claimNow && list.length > 1){
-        return setStatus("Claim-now at mint is only allowed for a single recipient at once (provide one address).", "error");
-      }
+      const hash = shippingHashFromInput();
+      if (!hash) { setStatus("Please enter shipping info (required).", "error"); return; }
 
       try{
         disableMint(true);
-        let i = 0;
-        for (const addr of list){
-          setStatus(`Sending tx ${i+1}/${list.length}…`);
-          const tx = await mintOne(addr, claimNow, shippingHash);
-          setStatus(`Mining ${i+1}/${list.length}…`);
-          const receipt = await tx.wait();
+        const addr = list[0];
+        const sim = await preflightMint(addr, hash, currentPriceWei);
+        if (!sim.ok) { setStatus(sim.msg, "error"); return; }
 
-          // --- EMAIL per tx ---
-          const shippingText = claimNow ? el("shipping").value.trim() : "";
-          await sendClaimEmail({
-            wallet: addr,
-            tokenId: "(unknown)",
-            txHash: receipt.hash,
-            claimNow,
-            shippingText,
-            shippingHash
-          });
+        setStatus(`Sending tx…`);
+        const tx = await mintOne(addr, hash);
+        setStatus(`Mining…`);
+        const receipt = await tx.wait();
 
-          const a = document.createElement("a");
-          a.href = linkPolygonscan(`tx/${receipt.hash}`); a.target = "_blank"; a.rel = "noreferrer"; a.textContent = `Tx ${i+1}: ${receipt.hash.slice(0,10)}…`;
-          el("link").prepend(a);
-          i++;
-        }
-        setStatus("✅ All mints confirmed", "ok");
+        const canonical = canonicalShippingJson();
+        await sendClaimEmail({
+          wallet: addr,
+          tokenId: "(unknown)",
+          txHash: receipt.hash,
+          claimNow: true,
+          shippingText: canonical,
+          shippingHash: hash
+        });
+
+        const a = document.createElement("a");
+        a.href = linkPolygonscan(`tx/${receipt.hash}`); a.target = "_blank"; a.rel = "noreferrer"; a.textContent = `Tx: ${receipt.hash.slice(0,10)}…`;
+        el("link").prepend(a);
+
+        setStatus("✅ Mint confirmed", "ok");
         await refreshReads();
       }catch(err){
         console.error(err);
         const m = (err?.shortMessage || err?.message || String(err)).toLowerCase();
-        if (err?.code === 4001) setStatus("User rejected a transaction.", "error");
+        if (err?.code === 4001) setStatus("User rejected the transaction.", "error");
         else if (m.includes("insufficient funds")) setStatus("Insufficient funds for price + gas.", "error");
         else setStatus("❌ " + (err?.shortMessage || err?.message || String(err)), "error");
       }finally{
@@ -495,7 +504,6 @@
     document.getElementById("switchBtn").addEventListener("click", switchToPolygon);
     document.getElementById("mintMeBtn").addEventListener("click", mintToMe);
     document.getElementById("mintBtn").addEventListener("click", mintTo);
-
     document.getElementById("btnCheck").addEventListener("click", checkStatus);
     document.getElementById("btnSetDeliveredTrue").addEventListener("click", () => setDeliveredFlag(true));
     document.getElementById("btnSetDeliveredFalse").addEventListener("click", () => setDeliveredFlag(false));
@@ -529,34 +537,37 @@
         ownerAddr = await contract.owner();
         const isOwner = ownerAddr.toLowerCase() === myAddr.toLowerCase();
         if (!isOwner){ setStatus("This page is owner-only mint. Your wallet is not the owner.", "error"); disableMint(true); }
-        else { setStatus(""); disableMint(false); if (!el("to").value.trim()) el("to").value = myAddr; }
-
-        await refreshReads();
+        else { setStatus(""); if (!el("to").value.trim()) el("to").value = myAddr; await refreshReads(); updateMintButtonsEnabled(); }
       } catch (err) {
         console.error(err);
         setStatus(err?.shortMessage || err?.message || String(err), "error");
       }
     });
 
-    // Test Email (no mint needed)
-    // document.getElementById("testEmail").addEventListener("click", async () => {
-    //  await sendClaimEmail({
-    //    wallet: myAddr || "0xTEST",
-    //    tokenId: "12345",
-    //    txHash: "0xdeadbeef",
-    //    claimNow: true,
-    //    shippingText: "Test shipping payload",
-    //    shippingHash: ethers.id("Test shipping payload")
-    //  });
-    //});
+    // Test Email (reads your current shipping field)
+    document.getElementById("testEmail").addEventListener("click", async () => {
+      const text = (el("shipping").value || "").trim();
+      if (!text) { setStatus("Enter shipping info first to test email.", "error"); return; }
+      const canonical = JSON.stringify({ v: "1", text: text.replace(/\s+/g, " ") });
+      const hash = ethers.id(canonical);
+      await sendClaimEmail({
+        wallet: myAddr || "0xTEST",
+        tokenId: "TEST",
+        txHash: "0xdeadbeef",
+        claimNow: true,
+        shippingText: canonical,
+        shippingHash: hash
+      });
+    });
 
-    // Enable/disable delivered buttons based on wallet ownership
+    // Enable/disable delivered buttons based on wallet ownership & toggle mint buttons when shipping changes
     function updateOwnerButtons(){
       const isOwner = ownerAddr && myAddr && ownerAddr.toLowerCase() === myAddr.toLowerCase();
       el("btnSetDeliveredTrue").disabled  = !isOwner;
       el("btnSetDeliveredFalse").disabled = !isOwner;
     }
-    const _updateOwnerButtonsInterval = setInterval(updateOwnerButtons, 500);
+    setInterval(updateOwnerButtons, 500);
+    el("shipping").addEventListener("input", updateMintButtonsEnabled);
 
     // Auto-connect to last chosen wallet
     (function autoConnect() {
