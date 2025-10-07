@@ -257,4 +257,178 @@
         await injected.request({ method:"wallet_switchEthereumChain", params:[{ chainId: POLYGON_CHAIN_ID_HEX }] });
       }catch(err){
         if (err && err.code === 4902){
-          awa
+          await injected.request({ method:"wallet_addEthereumChain", params:[POLYGON_PARAMS] });
+        } else { setStatus(err?.message || "Network switch failed.", "error"); return; }
+      }
+      await connect(localStorage.getItem("walletPref") || "auto");
+    }
+
+    async function refreshReads(){
+      if (!contract) return;
+      try{
+        const [minted, max, remaining, name, symbol, priceWei, priceCents, _claimOpen, _deliveryOpen] = await Promise.all([
+          contract.totalMinted(),
+          contract.MAX_SUPPLY(),
+          contract.remaining(),
+          contract.name(),
+          contract.symbol(),
+          contract.requiredWei(),
+          contract.mintPriceUsdCents(),
+          contract.claimOpen(),
+          contract.deliveryUpdatesOpen()
+        ]);
+        el("supply").textContent = BigInt(minted).toString();
+        el("max").textContent = BigInt(max).toString();
+        el("left").textContent = BigInt(remaining).toString();
+        el("ns").textContent = `${name} / ${symbol}`;
+
+        currentPriceWei = BigInt(priceWei.toString());
+        el("priceMatic").textContent = formatMatic(currentPriceWei);
+        el("priceUsd").textContent = formatUsdCents(priceCents);
+
+        el("claimOpen").textContent = _claimOpen ? "true" : "false";
+        el("deliveryOpen").textContent = _deliveryOpen ? "true" : "false";
+      }catch(e){
+        console.warn("read error", e);
+      }
+    }
+
+    async function mintOne(to, claimNow, shippingHash){
+      const overrides = currentPriceWei > 0n ? { value: currentPriceWei } : {};
+      return contract.mintFor(to, !!claimNow, shippingHash, overrides);
+    }
+
+    async function mintToMe(){
+      if (!contract || !myAddr) return;
+      try{
+        const me = normalizeAddress(myAddr); if (!me) return setStatus("Invalid sender address.", "error");
+
+        const claimNow = !!el("claimNow").checked;
+        const shippingHash = claimNow ? shippingHashFromInput() : ("0x" + "00".repeat(32));
+
+        setStatus("Sending tx…");
+        disableMint(true);
+        const tx = await mintOne(me, claimNow, shippingHash);
+        setStatus("Mining…");
+        const receipt = await tx.wait();
+        setStatus("✅ Confirmed", "ok");
+        const a = document.createElement("a");
+        a.href = linkPolygonscan(`tx/${receipt.hash}`); a.target = "_blank"; a.rel = "noreferrer"; a.textContent = `Tx: ${receipt.hash.slice(0,10)}…`;
+        el("link").prepend(a);
+        await refreshReads();
+      }catch(err){
+        console.error(err);
+        const m = (err?.shortMessage || err?.message || String(err)).toLowerCase();
+        if (err?.code === 4001) setStatus("User rejected the transaction.", "error");
+        else if (m.includes("insufficient funds")) setStatus("Insufficient funds for price + gas.", "error");
+        else setStatus("❌ " + (err?.shortMessage || err?.message || String(err)), "error");
+      }finally{
+        disableMint(false);
+      }
+    }
+
+    async function mintTo(){
+      if (!contract) return;
+      const list = parseAddresses(el("to").value);
+      if (!list.length) return setStatus("Enter at least one valid recipient address.", "error");
+
+      const claimNow = !!el("claimNow").checked;
+      const shippingHash = claimNow ? shippingHashFromInput() : ("0x" + "00".repeat(32));
+
+      // For safety: if batching + claimNow, require a single recipient (owner likely doesn't have per-recipient shipping details)
+      if (claimNow && list.length > 1){
+        return setStatus("Claim-now at mint is only allowed for a single recipient at once (provide one address).", "error");
+      }
+
+      try{
+        disableMint(true);
+        let i = 0;
+        for (const addr of list){
+          setStatus(`Sending tx ${i+1}/${list.length}…`);
+          const tx = await mintOne(addr, claimNow, shippingHash);
+          setStatus(`Mining ${i+1}/${list.length}…`);
+          const receipt = await tx.wait();
+          const a = document.createElement("a");
+          a.href = linkPolygonscan(`tx/${receipt.hash}`); a.target = "_blank"; a.rel = "noreferrer"; a.textContent = `Tx ${i+1}: ${receipt.hash.slice(0,10)}…`;
+          el("link").prepend(a);
+          i++;
+        }
+        setStatus("✅ All mints confirmed", "ok");
+        await refreshReads();
+      }catch(err){
+        console.error(err);
+        const m = (err?.shortMessage || err?.message || String(err)).toLowerCase();
+        if (err?.code === 4001) setStatus("User rejected a transaction.", "error");
+        else if (m.includes("insufficient funds")) setStatus("Insufficient funds for price + gas.", "error");
+        else setStatus("❌ " + (err?.shortMessage || err?.message || String(err)), "error");
+      }finally{
+        disableMint(false);
+      }
+    }
+
+    // Owner tools
+    async function checkStatus(){
+      const id = BigInt(el("checkId").value || "0");
+      if (id <= 0n) { setStatus("Enter a valid tokenId.", "error"); return; }
+      try{
+        const [c,d] = await Promise.all([
+          contract.physicalClaimed(id),
+          contract.physicalDelivered(id)
+        ]);
+        el("claimedOut").textContent = c ? "true" : "false";
+        el("deliveredOut").textContent = d ? "true" : "false";
+        setStatus("Status fetched.");
+      }catch(err){
+        console.error(err);
+        setStatus(err?.shortMessage || err?.message || String(err), "error");
+      }
+    }
+
+    async function setDeliveredFlag(toVal){
+      const id = BigInt(el("checkId").value || "0");
+      if (id <= 0n) { setStatus("Enter a valid tokenId.", "error"); return; }
+      try{
+        setStatus(`Sending setDelivered(${id.toString()}, ${toVal})…`);
+        const tx = await contract.setDelivered(id, !!toVal);
+        setStatus("Mining…");
+        await tx.wait();
+        setStatus("✅ Delivered flag updated", "ok");
+        await checkStatus();
+      }catch(err){
+        console.error(err);
+        setStatus(err?.shortMessage || err?.message || String(err), "error");
+      }
+    }
+
+    // Wire buttons + remember preference
+    const remember = (k) => { try { localStorage.setItem("walletPref", k); } catch {} };
+    document.getElementById("connectAuto").addEventListener("click", () => { remember("auto"); connect("auto"); });
+    document.getElementById("connectBrave").addEventListener("click", () => { remember("brave"); connect("brave"); });
+    document.getElementById("connectMM").addEventListener("click", () => { remember("metamask"); connect("metamask"); });
+    document.getElementById("switchBtn").addEventListener("click", switchToPolygon);
+    document.getElementById("mintMeBtn").addEventListener("click", mintToMe);
+    document.getElementById("mintBtn").addEventListener("click", mintTo);
+
+    document.getElementById("btnCheck").addEventListener("click", checkStatus);
+    document.getElementById("btnSetDeliveredTrue").addEventListener("click", () => setDeliveredFlag(true));
+    document.getElementById("btnSetDeliveredFalse").addEventListener("click", () => setDeliveredFlag(false));
+
+    // Enable/disable delivered buttons based on wallet ownership
+    function updateOwnerButtons(){
+      const isOwner = ownerAddr && myAddr && ownerAddr.toLowerCase() === myAddr.toLowerCase();
+      el("btnSetDeliveredTrue").disabled  = !isOwner;
+      el("btnSetDeliveredFalse").disabled = !isOwner;
+    }
+    const _updateOwnerButtonsInterval = setInterval(updateOwnerButtons, 500);
+
+    // Auto-connect to last chosen wallet
+    (function autoConnect() {
+      const last = (() => { try { return localStorage.getItem("walletPref") } catch { return null } })();
+      setTimeout(() => {
+        const hasProviders = getAllInjected().length || discovered.size;
+        if (hasProviders && last) connect(last);
+      }, 200);
+    })();
+  </script>
+</body>
+</html>
