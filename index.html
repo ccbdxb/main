@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>Test Mint on Polygon — Mazement</title>
+  <title>Mazement Test Minting</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <style>
     body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin:0; background:#0b0c10; color:#eaf5ff; }
@@ -29,9 +29,6 @@
     .divider{ height:1px; background:#1d2431; margin:14px 0; }
     .tiny{ font-size:12px; opacity:.85 }
     .links a{ display:block; }
-    .toast{ position:fixed; right:16px; bottom:16px; background:#0e1218; border:1px solid #2a3344; padding:10px 14px; border-radius:10px; }
-    .console{ margin-top:14px; padding:10px; background:#0e1218; border:1px solid #2a3344; border-radius:10px; }
-    .console pre{ white-space:pre-wrap; margin:6px 0 0; max-height:160px; overflow:auto; }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/ethers@6/dist/ethers.umd.min.js" defer></script>
 </head>
@@ -48,8 +45,9 @@
     <div class="stack" style="margin:12px 0 16px;">
       <button id="connectAuto">Connect (Auto)</button>
       <button id="connectBrave">Connect with Brave</button>
-      <button id="connectMM">Conenct with MetaMask</button>
-      <button id="switchBtn" style="display:none;">Switch Network</button>
+      <button id="connectMM">Connect with MetaMask</button>
+      <button id="connectLegacy">Force Connect (Legacy)</button>
+      <button id="switchBtn" style="display:none;">Switch to Polygon</button>
       <span id="address" class="pill">Not connected</span>
     </div>
 
@@ -73,7 +71,7 @@
         </div>
         <div class="col">
           <label for="shipping">Shipping info (free text, will be hashed to bytes32)</label>
-          <input id="shipping" type="text" placeholder="Name, email, address..."/>
+          <input id="shipping" type="text" placeholder="Name, email, delivery address..."/>
         </div>
       </div>
 
@@ -118,23 +116,11 @@
       </div>
     </div>
 
-    <div class="console">
-      <div class="tiny muted">Error Console</div>
-      <pre id="consoleOutput">—</pre>
-      <div class="stack" style="margin-top:6px;">
-        <button id="copyConsole">Copy details</button>
-      </div>
-    </div>
-
   </div>
-
-  <div id="toast" class="toast" style="display:none;"></div>
 
   <script defer>
     // ====== CONTRACT CONFIG ======
     const RAW_CONTRACT_ADDRESS = "0x20e28b37f331c9d94f1685f5fa1d1fc6d59d69b6"; // your address
-
-    // Minimal ABI subset (from your ABI)
     const ABI = [
       {"type":"function","name":"totalMinted","stateMutability":"view","inputs":[],"outputs":[{"type":"uint256"}]},
       {"type":"function","name":"MAX_SUPPLY","stateMutability":"view","inputs":[],"outputs":[{"type":"uint256"}]},
@@ -142,92 +128,67 @@
       {"type":"function","name":"owner","stateMutability":"view","inputs":[],"outputs":[{"type":"address"}]},
       {"type":"function","name":"name","stateMutability":"view","inputs":[],"outputs":[{"type":"string"}]},
       {"type":"function","name":"symbol","stateMutability":"view","inputs":[],"outputs":[{"type":"string"}]},
-      // Pricing
       {"type":"function","name":"requiredWei","stateMutability":"view","inputs":[],"outputs":[{"type":"uint256"}]},
       {"type":"function","name":"mintPriceUsdCents","stateMutability":"view","inputs":[],"outputs":[{"type":"uint256"}]},
-      // Physical / admin
       {"type":"function","name":"claimOpen","stateMutability":"view","inputs":[],"outputs":[{"type":"bool"}]},
       {"type":"function","name":"deliveryUpdatesOpen","stateMutability":"view","inputs":[],"outputs":[{"type":"bool"}]},
       {"type":"function","name":"physicalClaimed","stateMutability":"view","inputs":[{"type":"uint256"}],"outputs":[{"type":"bool"}]},
       {"type":"function","name":"physicalDelivered","stateMutability":"view","inputs":[{"type":"uint256"}],"outputs":[{"type":"bool"}]},
       {"type":"function","name":"setDelivered","stateMutability":"nonpayable","inputs":[{"type":"uint256","name":"tokenId"},{"type":"bool","name":"delivered"}],"outputs":[]},
-      // Mint
       {"type":"function","name":"mintFor","stateMutability":"payable","inputs":[{"name":"to","type":"address"},{"name":"claimNow","type":"bool"},{"name":"shippingInfoHash","type":"bytes32"}],"outputs":[]},
-      // Events for parsing
-      {"type":"event","name":"PhysicalClaimed","inputs":[
-        {"indexed":true,"name":"tokenId","type":"uint256"},
-        {"indexed":true,"name":"claimer","type":"address"},
-        {"indexed":true,"name":"shippingInfoHash","type":"bytes32"}],"anonymous":false},
-      {"type":"event","name":"Transfer","inputs":[
-        {"indexed":true,"name":"from","type":"address"},
-        {"indexed":true,"name":"to","type":"address"},
-        {"indexed":true,"name":"tokenId","type":"uint256"}],"anonymous":false}
     ];
 
-    // Email webhook (Google Apps Script Web App URL). Leave empty to disable email quietly.
-    const EMAIL_WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbz_FeczSgjnUyIKUmi5PinPuyjc9g4bh9lhafeX2Z1r9hK-jeseMPaB9hFGUk4Bp-4eSA/exec"; // e.g. "https://script.google.com/macros/s/AKfycbx.../exec"
-
-    // Chain names & supported networks (Polygon mainnet + Amoy)
-    const CHAIN_NAME = { 1:"Ethereum", 137:"Polygon", 80002:"Polygon Amoy", 11155111:"Sepolia", 8453:"Base", 42161:"Arbitrum One" };
-    const SUPPORTED_CHAINS = {
-      137: {
-        hex: "0x89",
-        params: {
-          chainId: "0x89",
-          chainName: "Polygon",
-          nativeCurrency: { name: "MATIC", symbol: "MATIC", decimals: 18 },
-          rpcUrls: ["https://polygon-rpc.com","https://rpc.ankr.com/polygon"],
-          blockExplorerUrls: ["https://polygonscan.com"]
-        },
-        explorer: (p)=>`https://polygonscan.com/${p}`
-      },
-      80002: {
-        hex: "0x13882",
-        params: {
-          chainId: "0x13882",
-          chainName: "Polygon Amoy",
-          nativeCurrency: { name: "MATIC", symbol: "MATIC", decimals: 18 },
-          rpcUrls: ["https://rpc-amoy.polygon.technology","https://polygon-amoy-bor-rpc.publicnode.com"],
-          blockExplorerUrls: ["https://www.oklink.com/amoy"]
-        },
-        explorer: (p)=>`https://amoy.polygonscan.com/${p}`
-      }
+    const POLYGON_CHAIN_ID_HEX = "0x89"; // 137
+    const POLYGON_PARAMS = {
+      chainId: POLYGON_CHAIN_ID_HEX,
+      chainName: "Polygon",
+      nativeCurrency: { name: "MATIC", symbol: "MATIC", decimals: 18 },
+      rpcUrls: ["https://polygon-rpc.com","https://rpc.ankr.com/polygon"],
+      blockExplorerUrls: ["https://polygonscan.com"]
     };
 
-    // Choose which chain your contract is on (set to 137 for mainnet, 80002 for Amoy)
-    const EXPECTED_CHAIN_ID = 137; // <-- change to 80002 if your contract is on Amoy
+    // Friendly chain names
+    const CHAIN_NAME = {
+      1:"Ethereum",137:"Polygon",80002:"Polygon Amoy",10:"OP Mainnet",42161:"Arbitrum One",
+      8453:"Base",56:"BNB Smart Chain",43114:"Avalanche C-Chain",324:"zkSync Era",
+      11155111:"Sepolia",5:"Goerli (deprecated)"
+    };
+    const getChainNameFromId = (n,fallback)=> CHAIN_NAME[n] || fallback || `Chain ${n}`;
 
     const el = id => document.getElementById(id);
-    function linkExplorer(chainId, path) {
-      const cfg = SUPPORTED_CHAINS[chainId] || SUPPORTED_CHAINS[EXPECTED_CHAIN_ID];
-      return cfg.explorer(path);
-    }
-    function setStatus(msg, cls="muted"){ const s=el("status"); s.className=cls; s.textContent=msg||""; }
-    function toast(msg){ const t=el("toast"); t.textContent=msg; t.style.display="block"; setTimeout(()=>t.style.display="none", 2500); }
-    function logConsole(obj){
-      const out = typeof obj === "string" ? obj : (obj?.stack || JSON.stringify(obj, null, 2));
-      el("consoleOutput").textContent = out || "—";
-    }
+    const linkPolygonscan = (p) => `https://polygonscan.com/${p}`;
+    const setStatus = (msg, cls="muted") => { const s=el("status"); s.className=cls; s.textContent=msg||""; };
 
-    // EIP-6963 discovery (Brave/MM)
+    // --- EIP-6963 discovery (Brave/MM) ---
     const discovered = new Map();
     window.addEventListener("eip6963:announceProvider", (ev) => { discovered.set(ev.detail.info.uuid, ev.detail); });
     window.dispatchEvent(new Event("eip6963:requestProvider"));
+
+    // PATCH #1: more-forgiving discovery (dedupe + fallback)
     function getAllInjected() {
-      if (discovered.size) return [...discovered.values()].map(d => d.provider);
-      const eth = window.ethereum; if (!eth) return [];
-      if (Array.isArray(eth.providers) && eth.providers.length) return eth.providers;
-      return [eth];
+      const from6963 = [...discovered.values()]
+        .map(d => d && d.provider)
+        .filter(Boolean);
+      const eth = window.ethereum;
+      const fromEth = (() => {
+        if (!eth) return [];
+        if (Array.isArray(eth.providers) && eth.providers.length) return eth.providers.filter(Boolean);
+        return [eth];
+      })();
+      const set = new Set([...from6963, ...fromEth]);
+      return [...set];
     }
+
     function pickProvider(kind="auto"){
       const list = getAllInjected(); if (!list.length) return null;
-      const brave6963 = (() => { for (const d of discovered.values()) if (d.info.rdns==="com.brave.wallet") return d.provider; return null; })();
+      const brave6963 = (() => { for (const d of discovered.values()) if (d.info?.rdns==="com.brave.wallet") return d.provider; return null; })();
       const brave = brave6963 || list.find(p=>p.isBraveWallet);
       const metamask = list.find(p=>p.isMetaMask && !p.isBraveWallet);
       if (kind==="brave") return brave ?? (list.length===1?list[0]:null);
       if (kind==="metamask") return metamask ?? null;
       return brave ?? metamask ?? list[0];
     }
+
     function attachProviderEvents(injected){
       if (!injected || injected.__hasHandlers) return;
       injected.__hasHandlers = true;
@@ -239,7 +200,6 @@
     let provider, signer, contract, ownerAddr, myAddr, currentInjected = null;
     let CONTRACT_ADDRESS;
     let currentPriceWei = 0n; // per mint
-    let currentChainId = EXPECTED_CHAIN_ID;
 
     // Helpers
     function normalizeAddress(s){ try { return ethers.getAddress(s.trim()); } catch { return null; } }
@@ -248,69 +208,20 @@
     }
     function formatMatic(wei){ try { return `${ethers.formatEther(wei)} MATIC`; } catch { return `${wei.toString()} wei`; } }
     function formatUsdCents(c){ try{ const n = BigInt(c); const d = (n/100n).toString(); const r = (n%100n).toString().padStart(2,"0"); return `$${d}.${r}`; } catch { return `$${c}`; } }
-    function canonicalShippingJson() {
-      const raw = el("shipping").value.trim();
-      const obj = { v: "1", text: raw };
-      return JSON.stringify({ text: obj.text, v: obj.v });
-    }
     function shippingHashFromInput(){
-      const canonical = canonicalShippingJson();
-      return ethers.id(canonical); // keccak256(utf8)
+      const s = el("shipping").value.trim();
+      if (!s) return "0x" + "00".repeat(32);
+      return ethers.id(s);
     }
-    function disableMint(disabled){ el("mintBtn").disabled = !!disabled; el("mintMeBtn").disabled = !!disabled; }
-
-    // Email helper (optional)
-    async function sendClaimEmail({ wallet, tokenId, txHash, claimNow, shippingText, shippingHash }) {
-      if (!EMAIL_WEBHOOK_URL) { toast("Email not configured"); return; }
-      const payload = {
-        wallet, tokenId, txHash, claimNow: !!claimNow,
-        shippingText, shippingHash,
-        timestamp: new Date().toISOString(), schema: "v1"
-      };
-      try {
-        const res = await fetch(EMAIL_WEBHOOK_URL, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload)
-        });
-        if (res.ok) toast("Email sent ✅");
-        else console.warn("Email webhook non-OK:", await res.text());
-      } catch (e) {
-        console.warn("Email webhook failed:", e);
-        logConsole(e);
-      }
-    }
-
-    // Receipt parsing (ethers v6)
-    const iface = new ethers.Interface(ABI);
-    function parseMintResult(receipt) {
-      for (const log of receipt.logs || []) {
-        try {
-          const p = iface.parseLog({ data: log.data, topics: log.topics });
-          if (p?.name === "PhysicalClaimed") {
-            return {
-              tokenId: p.args.tokenId.toString(),
-              shippingInfoHash: p.args.shippingInfoHash
-            };
-          }
-        } catch {}
-      }
-      for (const log of receipt.logs || []) {
-        try {
-          const p = iface.parseLog({ data: log.data, topics: log.topics });
-          if (p?.name === "Transfer") return { tokenId: p.args.tokenId.toString() };
-        } catch {}
-      }
-      return {};
-    }
+    const disableMint = (disabled)=>{ el("mintBtn").disabled = !!disabled; el("mintMeBtn").disabled = !!disabled; };
 
     async function connect(kind="auto"){
-      try{
-        const injected = pickProvider(kind);
-        if (!injected){ setStatus("No wallet detected. In Brave, enable Brave Wallet (brave://settings/wallet).", "error"); return; }
-        currentInjected = injected;
-        attachProviderEvents(injected);
+      const injected = pickProvider(kind);
+      if (!injected){ setStatus("No wallet detected. In Brave, enable Brave Wallet (brave://settings/wallet).", "error"); return; }
+      currentInjected = injected;
+      attachProviderEvents(injected);
 
+      try{
         await injected.request({ method:"eth_requestAccounts" });
         provider = new ethers.BrowserProvider(injected);
         signer = await provider.getSigner();
@@ -321,20 +232,16 @@
         catch { setStatus("Invalid contract address configured.", "error"); disableMint(true); return; }
 
         const net = await provider.getNetwork();
-        currentChainId = Number(net.chainId);
-        const friendly = CHAIN_NAME[currentChainId] || net.name || `Chain ${currentChainId}`;
-        el("network").textContent = `${friendly} (${currentChainId})`;
-        el("contractLink").textContent = `${CONTRACT_ADDRESS.slice(0,6)}…${CONTRACT_ADDRESS.slice(-4)}`;
-        el("contractLink").href = linkExplorer(currentChainId, `address/${CONTRACT_ADDRESS}`);
+        const cid = Number(net.chainId);
+        const friendly = getChainNameFromId(cid, net.name);
+        el("network").textContent = `${friendly} (${cid})`;
 
-        if (!SUPPORTED_CHAINS[currentChainId]){
-          setStatus(`Unsupported network ${currentChainId}. Click “Switch Network”.`, "error");
+        el("contractLink").textContent = `${CONTRACT_ADDRESS.slice(0,6)}…${CONTRACT_ADDRESS.slice(-4)}`;
+        el("contractLink").href = linkPolygonscan(`address/${CONTRACT_ADDRESS}`);
+
+        if (cid !== 137){
           el("switchBtn").style.display = "inline-block";
-          disableMint(true); return;
-        }
-        if (currentChainId !== EXPECTED_CHAIN_ID){
-          setStatus(`Wrong network. Click “Switch Network” to ${CHAIN_NAME[EXPECTED_CHAIN_ID]}.`, "error");
-          el("switchBtn").style.display = "inline-block";
+          setStatus("Wrong network. Click “Switch to Polygon”.", "error");
           disableMint(true); return;
         }
         el("switchBtn").style.display = "none";
@@ -357,21 +264,19 @@
       }catch(err){
         console.error(err);
         setStatus(err?.shortMessage || err?.message || String(err), "error");
-        logConsole(err);
         disableMint(true);
       }
     }
 
-    async function switchNetwork(){
+    async function switchToPolygon(){
       const injected = currentInjected || pickProvider("auto");
       if (!injected) return setStatus("No wallet available to switch.", "error");
-      const target = SUPPORTED_CHAINS[EXPECTED_CHAIN_ID];
       try{
-        await injected.request({ method:"wallet_switchEthereumChain", params:[{ chainId: target.hex }] });
+        await injected.request({ method:"wallet_switchEthereumChain", params:[{ chainId: POLYGON_CHAIN_ID_HEX }] });
       }catch(err){
         if (err && err.code === 4902){
-          await injected.request({ method:"wallet_addEthereumChain", params:[target.params] });
-        } else { setStatus(err?.message || "Network switch failed.", "error"); logConsole(err); return; }
+          await injected.request({ method:"wallet_addEthereumChain", params:[POLYGON_PARAMS] });
+        } else { setStatus(err?.message || "Network switch failed.", "error"); return; }
       }
       await connect(localStorage.getItem("walletPref") || "auto");
     }
@@ -395,7 +300,7 @@
         el("left").textContent = BigInt(remaining).toString();
         el("ns").textContent = `${name} / ${symbol}`;
 
-        currentPriceWei = BigInt(priceWei.toString ? priceWei.toString() : priceWei);
+        currentPriceWei = BigInt(priceWei.toString());
         el("priceMatic").textContent = formatMatic(currentPriceWei);
         el("priceUsd").textContent = formatUsdCents(priceCents);
 
@@ -403,7 +308,6 @@
         el("deliveryOpen").textContent = _deliveryOpen ? "true" : "false";
       }catch(e){
         console.warn("read error", e);
-        logConsole(e);
       }
     }
 
@@ -418,8 +322,7 @@
         const me = normalizeAddress(myAddr); if (!me) return setStatus("Invalid sender address.", "error");
 
         const claimNow = !!el("claimNow").checked;
-        const shippingText = claimNow ? canonicalShippingJson() : "";
-        const shippingHash = claimNow ? ethers.id(shippingText) : ("0x" + "00".repeat(32));
+        const shippingHash = claimNow ? shippingHashFromInput() : ("0x" + "00".repeat(32));
 
         setStatus("Sending tx…");
         disableMint(true);
@@ -427,24 +330,12 @@
         setStatus("Mining…");
         const receipt = await tx.wait();
         setStatus("✅ Confirmed", "ok");
-
-        const { tokenId, shippingInfoHash } = parseMintResult(receipt);
-        await sendClaimEmail({
-          wallet: myAddr,
-          tokenId: tokenId || "(unknown)",
-          txHash: receipt.hash,
-          claimNow,
-          shippingText,
-          shippingHash: shippingInfoHash || shippingHash
-        });
-
         const a = document.createElement("a");
-        a.href = linkExplorer(EXPECTED_CHAIN_ID, `tx/${receipt.hash}`); a.target = "_blank"; a.rel = "noreferrer"; a.textContent = `Tx: ${receipt.hash.slice(0,10)}…`;
+        a.href = linkPolygonscan(`tx/${receipt.hash}`); a.target = "_blank"; a.rel = "noreferrer"; a.textContent = `Tx: ${receipt.hash.slice(0,10)}…`;
         el("link").prepend(a);
         await refreshReads();
       }catch(err){
         console.error(err);
-        logConsole(err);
         const m = (err?.shortMessage || err?.message || String(err)).toLowerCase();
         if (err?.code === 4001) setStatus("User rejected the transaction.", "error");
         else if (m.includes("insufficient funds")) setStatus("Insufficient funds for price + gas.", "error");
@@ -460,11 +351,10 @@
       if (!list.length) return setStatus("Enter at least one valid recipient address.", "error");
 
       const claimNow = !!el("claimNow").checked;
-      const shippingText = claimNow ? canonicalShippingJson() : "";
-      const shippingHash = claimNow ? ethers.id(shippingText) : ("0x" + "00".repeat(32));
+      const shippingHash = claimNow ? shippingHashFromInput() : ("0x" + "00".repeat(32));
 
       if (claimNow && list.length > 1){
-        return setStatus("Claim-now at mint is only allowed for a single recipient at once.", "error");
+        return setStatus("Claim-now at mint is only allowed for a single recipient at once (provide one address).", "error");
       }
 
       try{
@@ -475,19 +365,8 @@
           const tx = await mintOne(addr, claimNow, shippingHash);
           setStatus(`Mining ${i+1}/${list.length}…`);
           const receipt = await tx.wait();
-
-          const { tokenId, shippingInfoHash } = parseMintResult(receipt);
-          await sendClaimEmail({
-            wallet: addr,
-            tokenId: tokenId || "(unknown)",
-            txHash: receipt.hash,
-            claimNow,
-            shippingText,
-            shippingHash: shippingInfoHash || shippingHash
-          });
-
           const a = document.createElement("a");
-          a.href = linkExplorer(EXPECTED_CHAIN_ID, `tx/${receipt.hash}`); a.target = "_blank"; a.rel = "noreferrer"; a.textContent = `Tx ${i+1}: ${receipt.hash.slice(0,10)}…`;
+          a.href = linkPolygonscan(`tx/${receipt.hash}`); a.target = "_blank"; a.rel = "noreferrer"; a.textContent = `Tx ${i+1}: ${receipt.hash.slice(0,10)}…`;
           el("link").prepend(a);
           i++;
         }
@@ -495,7 +374,6 @@
         await refreshReads();
       }catch(err){
         console.error(err);
-        logConsole(err);
         const m = (err?.shortMessage || err?.message || String(err)).toLowerCase();
         if (err?.code === 4001) setStatus("User rejected a transaction.", "error");
         else if (m.includes("insufficient funds")) setStatus("Insufficient funds for price + gas.", "error");
@@ -519,7 +397,6 @@
         setStatus("Status fetched.");
       }catch(err){
         console.error(err);
-        logConsole(err);
         setStatus(err?.shortMessage || err?.message || String(err), "error");
       }
     }
@@ -536,7 +413,6 @@
         await checkStatus();
       }catch(err){
         console.error(err);
-        logConsole(err);
         setStatus(err?.shortMessage || err?.message || String(err), "error");
       }
     }
@@ -546,7 +422,7 @@
     document.getElementById("connectAuto").addEventListener("click", () => { remember("auto"); connect("auto"); });
     document.getElementById("connectBrave").addEventListener("click", () => { remember("brave"); connect("brave"); });
     document.getElementById("connectMM").addEventListener("click", () => { remember("metamask"); connect("metamask"); });
-    document.getElementById("switchBtn").addEventListener("click", switchNetwork);
+    document.getElementById("switchBtn").addEventListener("click", switchToPolygon);
     document.getElementById("mintMeBtn").addEventListener("click", mintToMe);
     document.getElementById("mintBtn").addEventListener("click", mintTo);
 
@@ -554,9 +430,42 @@
     document.getElementById("btnSetDeliveredTrue").addEventListener("click", () => setDeliveredFlag(true));
     document.getElementById("btnSetDeliveredFalse").addEventListener("click", () => setDeliveredFlag(false));
 
-    // Copy console
-    document.getElementById("copyConsole").addEventListener("click", async () => {
-      try { await navigator.clipboard.writeText(el("consoleOutput").textContent || ""); toast("Copied"); } catch {}
+    // PATCH #2: legacy direct connect path (bypasses multi-provider logic)
+    document.getElementById("connectLegacy").addEventListener("click", async () => {
+      try {
+        const eth = window.ethereum;
+        if (!eth) { setStatus("No window.ethereum found.", "error"); return; }
+        await eth.request({ method: "eth_requestAccounts" });
+        provider = new ethers.BrowserProvider(eth);
+        signer = await provider.getSigner();
+        myAddr = await signer.getAddress();
+        el("address").textContent = `${myAddr.slice(0,6)}…${myAddr.slice(-4)}`;
+
+        const net = await provider.getNetwork();
+        const cid = Number(net.chainId);
+        const friendly = getChainNameFromId(cid, net.name);
+        el("network").textContent = `${friendly} (${cid})`;
+
+        if (cid !== 137) {
+          el("switchBtn").style.display = "inline-block";
+          setStatus("Wrong network. Click “Switch to Polygon”.", "error");
+          disableMint(true); return;
+        }
+        el("switchBtn").style.display = "none";
+
+        CONTRACT_ADDRESS = ethers.getAddress(RAW_CONTRACT_ADDRESS);
+        contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, signer);
+
+        ownerAddr = await contract.owner();
+        const isOwner = ownerAddr.toLowerCase() === myAddr.toLowerCase();
+        if (!isOwner){ setStatus("This page is owner-only mint. Your wallet is not the owner.", "error"); disableMint(true); }
+        else { setStatus(""); disableMint(false); if (!el("to").value.trim()) el("to").value = myAddr; }
+
+        await refreshReads();
+      } catch (err) {
+        console.error(err);
+        setStatus(err?.shortMessage || err?.message || String(err), "error");
+      }
     });
 
     // Enable/disable delivered buttons based on wallet ownership
@@ -565,19 +474,18 @@
       el("btnSetDeliveredTrue").disabled  = !isOwner;
       el("btnSetDeliveredFalse").disabled = !isOwner;
     }
-    setInterval(updateOwnerButtons, 500);
+    const _updateOwnerButtonsInterval = setInterval(updateOwnerButtons, 500);
 
-    // Global error handlers to surface issues
-    window.addEventListener("error", (e) => { logConsole(e.error || e.message || e); });
-    window.addEventListener("unhandledrejection", (e) => { logConsole(e.reason || e); });
-
-    // Auto-connect to last chosen wallet
+    // PATCH #3: auto-connect retries (helps when providers announce late)
     (function autoConnect() {
       const last = (() => { try { return localStorage.getItem("walletPref") } catch { return null } })();
-      setTimeout(() => {
-        const hasProviders = getAllInjected().length || discovered.size;
-        if (hasProviders && last) connect(last);
-      }, 200);
+      let attempts = 0;
+      const tryConnect = () => {
+        const hasAny = getAllInjected().length || typeof window.ethereum !== "undefined";
+        if (hasAny && last) connect(last);
+        else if (attempts++ < 5) setTimeout(tryConnect, 250); // try up to ~1.25s
+      };
+      setTimeout(tryConnect, 200);
     })();
   </script>
 </body>
