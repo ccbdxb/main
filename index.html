@@ -47,6 +47,7 @@
       <button id="connectBrave">Connect with Brave</button>
       <button id="connectMM">Connect with MetaMask</button>
       <button id="connectLegacy">Force Connect (Legacy)</button>
+      <button id="testEmail">Test Email</button>
       <button id="switchBtn" style="display:none;">Switch to Polygon</button>
       <span id="address" class="pill">Not connected</span>
     </div>
@@ -138,6 +139,41 @@
       {"type":"function","name":"mintFor","stateMutability":"payable","inputs":[{"name":"to","type":"address"},{"name":"claimNow","type":"bool"},{"name":"shippingInfoHash","type":"bytes32"}],"outputs":[]},
     ];
 
+    // --- Email webhook (Google Apps Script Web App URL) ---
+    const EMAIL_WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbz_FeczSgjnUyIKUmi5PinPuyjc9g4bh9lhafeX2Z1r9hK-jeseMPaB9hFGUk4Bp-4eSA/exec";
+
+    /**
+     * Sends the mint + shipping details to your email via Apps Script.
+     * Shows success/failure on the page status line and logs details to the console.
+     */
+    async function sendClaimEmail({ wallet, tokenId, txHash, claimNow, shippingText, shippingHash }) {
+      if (!EMAIL_WEBHOOK_URL) {
+        setStatus("Email not configured (EMAIL_WEBHOOK_URL is empty).", "error");
+        return;
+      }
+      const payload = {
+        wallet, tokenId, txHash, claimNow: !!claimNow,
+        shippingText: shippingText || "",
+        shippingHash: shippingHash || "",
+        timestamp: new Date().toISOString(),
+        schema: "v1"
+      };
+      try {
+        const res = await fetch(EMAIL_WEBHOOK_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        const text = await res.text();
+        console.log("[email webhook]", res.status, text);
+        if (res.ok) setStatus("Email webhook OK (" + res.status + ")", "ok");
+        else setStatus("Email webhook failed (" + res.status + "): " + text, "error");
+      } catch (e) {
+        console.warn("Email webhook error:", e);
+        setStatus("Email webhook error: " + (e.message || String(e)), "error");
+      }
+    }
+
     const POLYGON_CHAIN_ID_HEX = "0x89"; // 137
     const POLYGON_PARAMS = {
       chainId: POLYGON_CHAIN_ID_HEX,
@@ -163,12 +199,8 @@
     const discovered = new Map();
     window.addEventListener("eip6963:announceProvider", (ev) => { discovered.set(ev.detail.info.uuid, ev.detail); });
     window.dispatchEvent(new Event("eip6963:requestProvider"));
-
-    // PATCH #1: more-forgiving discovery (dedupe + fallback)
     function getAllInjected() {
-      const from6963 = [...discovered.values()]
-        .map(d => d && d.provider)
-        .filter(Boolean);
+      const from6963 = [...discovered.values()].map(d => d && d.provider).filter(Boolean);
       const eth = window.ethereum;
       const fromEth = (() => {
         if (!eth) return [];
@@ -178,7 +210,6 @@
       const set = new Set([...from6963, ...fromEth]);
       return [...set];
     }
-
     function pickProvider(kind="auto"){
       const list = getAllInjected(); if (!list.length) return null;
       const brave6963 = (() => { for (const d of discovered.values()) if (d.info?.rdns==="com.brave.wallet") return d.provider; return null; })();
@@ -188,7 +219,6 @@
       if (kind==="metamask") return metamask ?? null;
       return brave ?? metamask ?? list[0];
     }
-
     function attachProviderEvents(injected){
       if (!injected || injected.__hasHandlers) return;
       injected.__hasHandlers = true;
@@ -210,8 +240,8 @@
     function formatUsdCents(c){ try{ const n = BigInt(c); const d = (n/100n).toString(); const r = (n%100n).toString().padStart(2,"0"); return `$${d}.${r}`; } catch { return `$${c}`; } }
     function shippingHashFromInput(){
       const s = el("shipping").value.trim();
-      if (!s) return "0x" + "00".repeat(32);
-      return ethers.id(s);
+      if (!s) return "0x" + "00".repeat(32); // bytes32 zero if none
+      return ethers.id(s); // keccak256(utf8)
     }
     const disableMint = (disabled)=>{ el("mintBtn").disabled = !!disabled; el("mintMeBtn").disabled = !!disabled; };
 
@@ -330,6 +360,18 @@
         setStatus("Mining…");
         const receipt = await tx.wait();
         setStatus("✅ Confirmed", "ok");
+
+        // --- EMAIL: send details after success ---
+        const shippingText = claimNow ? el("shipping").value.trim() : "";
+        await sendClaimEmail({
+          wallet: myAddr,
+          tokenId: "(unknown)", // simple; can be parsed from logs later if you want
+          txHash: receipt.hash,
+          claimNow,
+          shippingText,
+          shippingHash
+        });
+
         const a = document.createElement("a");
         a.href = linkPolygonscan(`tx/${receipt.hash}`); a.target = "_blank"; a.rel = "noreferrer"; a.textContent = `Tx: ${receipt.hash.slice(0,10)}…`;
         el("link").prepend(a);
@@ -352,7 +394,6 @@
 
       const claimNow = !!el("claimNow").checked;
       const shippingHash = claimNow ? shippingHashFromInput() : ("0x" + "00".repeat(32));
-
       if (claimNow && list.length > 1){
         return setStatus("Claim-now at mint is only allowed for a single recipient at once (provide one address).", "error");
       }
@@ -365,6 +406,18 @@
           const tx = await mintOne(addr, claimNow, shippingHash);
           setStatus(`Mining ${i+1}/${list.length}…`);
           const receipt = await tx.wait();
+
+          // --- EMAIL per tx ---
+          const shippingText = claimNow ? el("shipping").value.trim() : "";
+          await sendClaimEmail({
+            wallet: addr,
+            tokenId: "(unknown)",
+            txHash: receipt.hash,
+            claimNow,
+            shippingText,
+            shippingHash
+          });
+
           const a = document.createElement("a");
           a.href = linkPolygonscan(`tx/${receipt.hash}`); a.target = "_blank"; a.rel = "noreferrer"; a.textContent = `Tx ${i+1}: ${receipt.hash.slice(0,10)}…`;
           el("link").prepend(a);
@@ -430,7 +483,7 @@
     document.getElementById("btnSetDeliveredTrue").addEventListener("click", () => setDeliveredFlag(true));
     document.getElementById("btnSetDeliveredFalse").addEventListener("click", () => setDeliveredFlag(false));
 
-    // PATCH #2: legacy direct connect path (bypasses multi-provider logic)
+    // Legacy direct connect (fallback)
     document.getElementById("connectLegacy").addEventListener("click", async () => {
       try {
         const eth = window.ethereum;
@@ -468,6 +521,18 @@
       }
     });
 
+    // Test Email (no mint needed)
+    document.getElementById("testEmail").addEventListener("click", async () => {
+      await sendClaimEmail({
+        wallet: myAddr || "0xTEST",
+        tokenId: "12345",
+        txHash: "0xdeadbeef",
+        claimNow: true,
+        shippingText: "Test shipping payload",
+        shippingHash: ethers.id("Test shipping payload")
+      });
+    });
+
     // Enable/disable delivered buttons based on wallet ownership
     function updateOwnerButtons(){
       const isOwner = ownerAddr && myAddr && ownerAddr.toLowerCase() === myAddr.toLowerCase();
@@ -476,16 +541,13 @@
     }
     const _updateOwnerButtonsInterval = setInterval(updateOwnerButtons, 500);
 
-    // PATCH #3: auto-connect retries (helps when providers announce late)
+    // Auto-connect to last chosen wallet
     (function autoConnect() {
       const last = (() => { try { return localStorage.getItem("walletPref") } catch { return null } })();
-      let attempts = 0;
-      const tryConnect = () => {
-        const hasAny = getAllInjected().length || typeof window.ethereum !== "undefined";
-        if (hasAny && last) connect(last);
-        else if (attempts++ < 5) setTimeout(tryConnect, 250); // try up to ~1.25s
-      };
-      setTimeout(tryConnect, 200);
+      setTimeout(() => {
+        const hasProviders = getAllInjected().length || discovered.size;
+        if (hasProviders && last) connect(last);
+      }, 200);
     })();
   </script>
 </body>
