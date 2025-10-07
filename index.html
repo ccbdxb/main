@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <style>
     body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin:0; background:#0b0c10; color:#eaf5ff; }
-    .wrap { max-width: 920px; margin: 40px auto; padding: 24px; background:#11141a; border:1px solid #222936; border-radius:16px; }
+    .wrap { max-width: 1500px; margin: 40px auto; padding: 24px; background:#11141a; border:1px solid #222936; border-radius:16px; }
     h1 { margin:0 0 8px; }
     .row { display:flex; justify-content:space-between; padding:10px 12px; background:#0e1218; border:1px solid #1d2431; border-radius:10px; margin-top:10px; }
     .stack{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
@@ -29,11 +29,50 @@
     .divider{ height:1px; background:#1d2431; margin:14px 0; }
     .tiny{ font-size:12px; opacity:.85 }
     .links a{ display:block; }
+    /* 2-column layout */
+    .layout {
+      display: grid;
+      grid-template-columns: 340px minmax(0, 1fr); /* left fixed, right flexible */
+      gap: 24px;
+      align-items: start;
+    }
+    
+    /* Left preview */
+    .side .preview {
+      width: 100%;
+      display: block;
+      border-radius: 12px;
+      border: 1px solid #222936;
+      background: #0e1218;
+    }
+    .side figcaption {
+      font-size: 12px;
+      opacity: .85;
+      margin-top: 6px;
+    }
+    
+    /* Responsive: stack on narrow screens */
+    @media (max-width: 900px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+    }
+
   </style>
   <script src="https://cdn.jsdelivr.net/npm/ethers@6/dist/ethers.umd.min.js" defer></script>
 </head>
 <body>
   <div class="wrap">
+    <div class="layout">
+    <!-- LEFT -->
+    <aside class="side">
+      <figure>
+        <!-- Replace src with your file/URL -->
+        <img class="preview" src="maze-preview.jpg" alt="Maze preview" />
+        <figcaption>Preview of the physical maze artwork</figcaption>
+      </figure>
+    </aside>
+    <main class="right">
     <h1>Owner Mint</h1>
     <div class="kvs">
       <span>Network: <strong id="network">—</strong></span>
@@ -116,7 +155,7 @@
         </div>
       </div>
     </div>
-
+    </main>
   </div>
 
   <script defer>
