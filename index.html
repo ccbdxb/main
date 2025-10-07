@@ -29,33 +29,13 @@
     .divider{ height:1px; background:#1d2431; margin:14px 0; }
     .tiny{ font-size:12px; opacity:.85 }
     .links a{ display:block; }
-    /* 2-column layout */
-    .layout {
-      display: grid;
-      grid-template-columns: 340px minmax(0, 1fr); /* left fixed, right flexible */
-      gap: 24px;
-      align-items: start;
-    }
-    
-    /* Left preview */
-    .side .preview {
-      width: 100%;
-      display: block;
-      border-radius: 12px;
-      border: 1px solid #222936;
-      background: #0e1218;
-    }
-    .side figcaption {
-      font-size: 12px;
-      opacity: .85;
-      margin-top: 6px;
-    }
+    .layout{display:grid;grid-template-columns:minmax(240px,340px) 1fr;gap:24px;align-items:start}
+    .art{background:#fff;border:1px solid #1d2431;border-radius:12px;padding:10px}
+    .art img{display:block;width:100%;height:auto;border-radius:8px}
+    .caption{font-size:12px;opacity:.8;margin-top:8px;text-align:center;color:#000;}
     
     /* Responsive: stack on narrow screens */
     @media (max-width: 900px) {
-      .layout {
-        grid-template-columns: 1fr;
-      }
     }
 
   </style>
