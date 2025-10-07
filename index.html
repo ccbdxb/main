@@ -29,39 +29,11 @@
     .divider{ height:1px; background:#1d2431; margin:14px 0; }
     .tiny{ font-size:12px; opacity:.85 }
     .links a{ display:block; }
-    /* Left preview image */
-    .side {
-      float: left;
-      width: 280px;               /* tweak as you like (240–320px works well) */
-      margin: 0 18px 18px 0;
-    }
-    .side .preview {
-      width: 100%;
-      display: block;
-      border-radius: 12px;
-      border: 1px solid #222936;
-      background: #0e1218;
-    }
-    .side figcaption {
-      font-size: 12px;
-      opacity: .85;
-      margin-top: 6px;
-    }
-    
-    /* Stack on small screens */
-    @media (max-width: 780px) {
-      .side { float:none; width:100%; margin: 0 0 14px 0; }
-    }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/ethers@6/dist/ethers.umd.min.js" defer></script>
 </head>
 <body>
   <div class="wrap">
-    <figure class="side">
-      <!-- Replace the src with your actual preview file or a hosted URL -->
-      <img class="preview" src="image/mazement_preview.jpg" alt="Mazement preview" />
-      <figcaption>Preview of the physical maze artwork</figcaption>
-    </figure>
     <h1>Owner Mint</h1>
     <div class="kvs">
       <span>Network: <strong id="network">—</strong></span>
