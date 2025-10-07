@@ -1,0 +1,584 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Test Mint on Polygon — Mazement</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin:0; background:#0b0c10; color:#eaf5ff; }
+    .wrap { max-width: 920px; margin: 40px auto; padding: 24px; background:#11141a; border:1px solid #222936; border-radius:16px; }
+    h1 { margin:0 0 8px; }
+    .row { display:flex; justify-content:space-between; padding:10px 12px; background:#0e1218; border:1px solid #1d2431; border-radius:10px; margin-top:10px; }
+    .stack{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+    .col{ display:flex; flex-direction:column; gap:8px; }
+    .grid{ display:grid; gap:10px; grid-template-columns: 1fr 1fr; }
+    button{ cursor:pointer; padding:10px 14px; border-radius:10px; border:1px solid #2a3344; background:#1f2837; color:#eaf5ff; }
+    button[disabled]{ opacity:.6; cursor:not-allowed; }
+    input[type=text], input[type=number], textarea{
+      width:100%; padding:10px 12px; border-radius:10px; border:1px solid #2a3344; background:#0e1218; color:#eaf5ff;
+    }
+    label{ font-size:14px; opacity:.9 }
+    a{ color:#8ab4ff; }
+    .muted{ opacity:.8 }
+    .error{ color:#ff6b6b }
+    .ok{ color:#6bff95 }
+    .pill{ font-size:12px; padding:4px 8px; border-radius:999px; background:#1b2230; border:1px solid #2a3344; }
+    .kvs{ display:flex; gap:12px; align-items:center; flex-wrap:wrap}
+    .kvs span{ font-size:12px; opacity:.9; }
+    .panel{ padding:12px; border:1px solid #1d2431; border-radius:12px; background:#0e1218; }
+    .divider{ height:1px; background:#1d2431; margin:14px 0; }
+    .tiny{ font-size:12px; opacity:.85 }
+    .links a{ display:block; }
+    .toast{ position:fixed; right:16px; bottom:16px; background:#0e1218; border:1px solid #2a3344; padding:10px 14px; border-radius:10px; }
+    .console{ margin-top:14px; padding:10px; background:#0e1218; border:1px solid #2a3344; border-radius:10px; }
+    .console pre{ white-space:pre-wrap; margin:6px 0 0; max-height:160px; overflow:auto; }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/ethers@6/dist/ethers.umd.min.js" defer></script>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Owner Mint</h1>
+    <div class="kvs">
+      <span>Network: <strong id="network">—</strong></span>
+      <span>Contract: <a id="contractLink" href="#" target="_blank" rel="noreferrer">—</a></span>
+      <span>Name/Symbol: <strong id="ns">—</strong></span>
+    </div>
+
+    <!-- Wallet controls -->
+    <div class="stack" style="margin:12px 0 16px;">
+      <button id="connectAuto">Connect (Auto)</button>
+      <button id="connectBrave">Connect with Brave</button>
+      <button id="connectMM">Conenct with MetaMask</button>
+      <button id="switchBtn" style="display:none;">Switch Network</button>
+      <span id="address" class="pill">Not connected</span>
+    </div>
+
+    <div class="row"><span>Supply</span><strong><span id="supply">—</span>/<span id="max">—</span> (<span id="left">—</span> left)</strong></div>
+    <div class="row"><span>Price</span>
+      <strong>
+        <span id="priceMatic">—</span>
+        <span class="tiny">/ <span id="priceUsd">—</span></span>
+      </strong>
+    </div>
+
+    <!-- Mint panel -->
+    <div class="panel" style="margin-top:12px;">
+      <div class="muted" style="margin-bottom:8px;">Recipient address (single) or multiple (comma, space, or newline-separated)</div>
+      <textarea id="to" rows="3" placeholder="0x... or paste addr1, addr2, addr3..."></textarea>
+
+      <div class="grid" style="margin-top:10px;">
+        <div class="col">
+          <label><input type="checkbox" id="claimNow" /> Claim physical now (in the same tx)</label>
+          <div class="tiny muted">If enabled, we’ll hash the shipping info below and pass it to <code>mintFor</code>.</div>
+        </div>
+        <div class="col">
+          <label for="shipping">Shipping info (free text, will be hashed to bytes32)</label>
+          <input id="shipping" type="text" placeholder="Name, email, address..."/>
+        </div>
+      </div>
+
+      <div class="stack" style="margin-top:12px;">
+        <button id="mintMeBtn" disabled>Mint to me</button>
+        <button id="mintBtn" disabled>Mint to address(es)</button>
+      </div>
+      <div class="tiny muted" style="margin-top:6px;">
+        Each mint calls <code>mintFor(to, claimNow, shippingInfoHash)</code> and sends <code>requiredWei()</code> as <code>msg.value</code>.
+      </div>
+    </div>
+
+    <p id="status" class="muted" style="min-height:22px; margin-top:14px;"></p>
+    <div id="link" class="links" style="min-height:22px;"></div>
+
+    <div class="divider"></div>
+
+    <!-- Owner tools -->
+    <h3 style="margin:0 0 8px;">Owner Tools — Physical Delivery</h3>
+    <div class="panel">
+      <div class="grid">
+        <div class="col">
+          <label for="checkId">Token ID</label>
+          <input id="checkId" type="number" min="1" placeholder="eg. 1" />
+          <div class="stack">
+            <button id="btnCheck">Check Status</button>
+          </div>
+          <div class="tiny" style="margin-top:8px;">
+            Claimed: <strong id="claimedOut">—</strong> &nbsp; Delivered: <strong id="deliveredOut">—</strong>
+          </div>
+        </div>
+        <div class="col">
+          <label>Set Delivered</label>
+          <div class="stack">
+            <button id="btnSetDeliveredTrue" disabled>Set Delivered = true</button>
+            <button id="btnSetDeliveredFalse" disabled>Set Delivered = false</button>
+          </div>
+          <div class="tiny" style="margin-top:8px;">
+            claimOpen: <strong id="claimOpen">—</strong> &nbsp; deliveryUpdatesOpen: <strong id="deliveryOpen">—</strong>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="console">
+      <div class="tiny muted">Error Console</div>
+      <pre id="consoleOutput">—</pre>
+      <div class="stack" style="margin-top:6px;">
+        <button id="copyConsole">Copy details</button>
+      </div>
+    </div>
+
+  </div>
+
+  <div id="toast" class="toast" style="display:none;"></div>
+
+  <script defer>
+    // ====== CONTRACT CONFIG ======
+    const RAW_CONTRACT_ADDRESS = "0x20e28b37f331c9d94f1685f5fa1d1fc6d59d69b6"; // your address
+
+    // Minimal ABI subset (from your ABI)
+    const ABI = [
+      {"type":"function","name":"totalMinted","stateMutability":"view","inputs":[],"outputs":[{"type":"uint256"}]},
+      {"type":"function","name":"MAX_SUPPLY","stateMutability":"view","inputs":[],"outputs":[{"type":"uint256"}]},
+      {"type":"function","name":"remaining","stateMutability":"view","inputs":[],"outputs":[{"type":"uint256"}]},
+      {"type":"function","name":"owner","stateMutability":"view","inputs":[],"outputs":[{"type":"address"}]},
+      {"type":"function","name":"name","stateMutability":"view","inputs":[],"outputs":[{"type":"string"}]},
+      {"type":"function","name":"symbol","stateMutability":"view","inputs":[],"outputs":[{"type":"string"}]},
+      // Pricing
+      {"type":"function","name":"requiredWei","stateMutability":"view","inputs":[],"outputs":[{"type":"uint256"}]},
+      {"type":"function","name":"mintPriceUsdCents","stateMutability":"view","inputs":[],"outputs":[{"type":"uint256"}]},
+      // Physical / admin
+      {"type":"function","name":"claimOpen","stateMutability":"view","inputs":[],"outputs":[{"type":"bool"}]},
+      {"type":"function","name":"deliveryUpdatesOpen","stateMutability":"view","inputs":[],"outputs":[{"type":"bool"}]},
+      {"type":"function","name":"physicalClaimed","stateMutability":"view","inputs":[{"type":"uint256"}],"outputs":[{"type":"bool"}]},
+      {"type":"function","name":"physicalDelivered","stateMutability":"view","inputs":[{"type":"uint256"}],"outputs":[{"type":"bool"}]},
+      {"type":"function","name":"setDelivered","stateMutability":"nonpayable","inputs":[{"type":"uint256","name":"tokenId"},{"type":"bool","name":"delivered"}],"outputs":[]},
+      // Mint
+      {"type":"function","name":"mintFor","stateMutability":"payable","inputs":[{"name":"to","type":"address"},{"name":"claimNow","type":"bool"},{"name":"shippingInfoHash","type":"bytes32"}],"outputs":[]},
+      // Events for parsing
+      {"type":"event","name":"PhysicalClaimed","inputs":[
+        {"indexed":true,"name":"tokenId","type":"uint256"},
+        {"indexed":true,"name":"claimer","type":"address"},
+        {"indexed":true,"name":"shippingInfoHash","type":"bytes32"}],"anonymous":false},
+      {"type":"event","name":"Transfer","inputs":[
+        {"indexed":true,"name":"from","type":"address"},
+        {"indexed":true,"name":"to","type":"address"},
+        {"indexed":true,"name":"tokenId","type":"uint256"}],"anonymous":false}
+    ];
+
+    // Email webhook (Google Apps Script Web App URL). Leave empty to disable email quietly.
+    const EMAIL_WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbz_FeczSgjnUyIKUmi5PinPuyjc9g4bh9lhafeX2Z1r9hK-jeseMPaB9hFGUk4Bp-4eSA/exec"; // e.g. "https://script.google.com/macros/s/AKfycbx.../exec"
+
+    // Chain names & supported networks (Polygon mainnet + Amoy)
+    const CHAIN_NAME = { 1:"Ethereum", 137:"Polygon", 80002:"Polygon Amoy", 11155111:"Sepolia", 8453:"Base", 42161:"Arbitrum One" };
+    const SUPPORTED_CHAINS = {
+      137: {
+        hex: "0x89",
+        params: {
+          chainId: "0x89",
+          chainName: "Polygon",
+          nativeCurrency: { name: "MATIC", symbol: "MATIC", decimals: 18 },
+          rpcUrls: ["https://polygon-rpc.com","https://rpc.ankr.com/polygon"],
+          blockExplorerUrls: ["https://polygonscan.com"]
+        },
+        explorer: (p)=>`https://polygonscan.com/${p}`
+      },
+      80002: {
+        hex: "0x13882",
+        params: {
+          chainId: "0x13882",
+          chainName: "Polygon Amoy",
+          nativeCurrency: { name: "MATIC", symbol: "MATIC", decimals: 18 },
+          rpcUrls: ["https://rpc-amoy.polygon.technology","https://polygon-amoy-bor-rpc.publicnode.com"],
+          blockExplorerUrls: ["https://www.oklink.com/amoy"]
+        },
+        explorer: (p)=>`https://amoy.polygonscan.com/${p}`
+      }
+    };
+
+    // Choose which chain your contract is on (set to 137 for mainnet, 80002 for Amoy)
+    const EXPECTED_CHAIN_ID = 137; // <-- change to 80002 if your contract is on Amoy
+
+    const el = id => document.getElementById(id);
+    function linkExplorer(chainId, path) {
+      const cfg = SUPPORTED_CHAINS[chainId] || SUPPORTED_CHAINS[EXPECTED_CHAIN_ID];
+      return cfg.explorer(path);
+    }
+    function setStatus(msg, cls="muted"){ const s=el("status"); s.className=cls; s.textContent=msg||""; }
+    function toast(msg){ const t=el("toast"); t.textContent=msg; t.style.display="block"; setTimeout(()=>t.style.display="none", 2500); }
+    function logConsole(obj){
+      const out = typeof obj === "string" ? obj : (obj?.stack || JSON.stringify(obj, null, 2));
+      el("consoleOutput").textContent = out || "—";
+    }
+
+    // EIP-6963 discovery (Brave/MM)
+    const discovered = new Map();
+    window.addEventListener("eip6963:announceProvider", (ev) => { discovered.set(ev.detail.info.uuid, ev.detail); });
+    window.dispatchEvent(new Event("eip6963:requestProvider"));
+    function getAllInjected() {
+      if (discovered.size) return [...discovered.values()].map(d => d.provider);
+      const eth = window.ethereum; if (!eth) return [];
+      if (Array.isArray(eth.providers) && eth.providers.length) return eth.providers;
+      return [eth];
+    }
+    function pickProvider(kind="auto"){
+      const list = getAllInjected(); if (!list.length) return null;
+      const brave6963 = (() => { for (const d of discovered.values()) if (d.info.rdns==="com.brave.wallet") return d.provider; return null; })();
+      const brave = brave6963 || list.find(p=>p.isBraveWallet);
+      const metamask = list.find(p=>p.isMetaMask && !p.isBraveWallet);
+      if (kind==="brave") return brave ?? (list.length===1?list[0]:null);
+      if (kind==="metamask") return metamask ?? null;
+      return brave ?? metamask ?? list[0];
+    }
+    function attachProviderEvents(injected){
+      if (!injected || injected.__hasHandlers) return;
+      injected.__hasHandlers = true;
+      injected.on?.("accountsChanged", () => connect(localStorage.getItem("walletPref") || "auto"));
+      injected.on?.("chainChanged",   () => connect(localStorage.getItem("walletPref") || "auto"));
+      injected.on?.("disconnect",     () => { setStatus("Wallet disconnected.", "error"); el("address").textContent="Not connected"; disableMint(true); });
+    }
+
+    let provider, signer, contract, ownerAddr, myAddr, currentInjected = null;
+    let CONTRACT_ADDRESS;
+    let currentPriceWei = 0n; // per mint
+    let currentChainId = EXPECTED_CHAIN_ID;
+
+    // Helpers
+    function normalizeAddress(s){ try { return ethers.getAddress(s.trim()); } catch { return null; } }
+    function parseAddresses(text){
+      return text.split(/[\s,]+/g).map(s=>s.trim()).filter(Boolean).map(normalizeAddress).filter(Boolean);
+    }
+    function formatMatic(wei){ try { return `${ethers.formatEther(wei)} MATIC`; } catch { return `${wei.toString()} wei`; } }
+    function formatUsdCents(c){ try{ const n = BigInt(c); const d = (n/100n).toString(); const r = (n%100n).toString().padStart(2,"0"); return `$${d}.${r}`; } catch { return `$${c}`; } }
+    function canonicalShippingJson() {
+      const raw = el("shipping").value.trim();
+      const obj = { v: "1", text: raw };
+      return JSON.stringify({ text: obj.text, v: obj.v });
+    }
+    function shippingHashFromInput(){
+      const canonical = canonicalShippingJson();
+      return ethers.id(canonical); // keccak256(utf8)
+    }
+    function disableMint(disabled){ el("mintBtn").disabled = !!disabled; el("mintMeBtn").disabled = !!disabled; }
+
+    // Email helper (optional)
+    async function sendClaimEmail({ wallet, tokenId, txHash, claimNow, shippingText, shippingHash }) {
+      if (!EMAIL_WEBHOOK_URL) { toast("Email not configured"); return; }
+      const payload = {
+        wallet, tokenId, txHash, claimNow: !!claimNow,
+        shippingText, shippingHash,
+        timestamp: new Date().toISOString(), schema: "v1"
+      };
+      try {
+        const res = await fetch(EMAIL_WEBHOOK_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        if (res.ok) toast("Email sent ✅");
+        else console.warn("Email webhook non-OK:", await res.text());
+      } catch (e) {
+        console.warn("Email webhook failed:", e);
+        logConsole(e);
+      }
+    }
+
+    // Receipt parsing (ethers v6)
+    const iface = new ethers.Interface(ABI);
+    function parseMintResult(receipt) {
+      for (const log of receipt.logs || []) {
+        try {
+          const p = iface.parseLog({ data: log.data, topics: log.topics });
+          if (p?.name === "PhysicalClaimed") {
+            return {
+              tokenId: p.args.tokenId.toString(),
+              shippingInfoHash: p.args.shippingInfoHash
+            };
+          }
+        } catch {}
+      }
+      for (const log of receipt.logs || []) {
+        try {
+          const p = iface.parseLog({ data: log.data, topics: log.topics });
+          if (p?.name === "Transfer") return { tokenId: p.args.tokenId.toString() };
+        } catch {}
+      }
+      return {};
+    }
+
+    async function connect(kind="auto"){
+      try{
+        const injected = pickProvider(kind);
+        if (!injected){ setStatus("No wallet detected. In Brave, enable Brave Wallet (brave://settings/wallet).", "error"); return; }
+        currentInjected = injected;
+        attachProviderEvents(injected);
+
+        await injected.request({ method:"eth_requestAccounts" });
+        provider = new ethers.BrowserProvider(injected);
+        signer = await provider.getSigner();
+        myAddr = await signer.getAddress();
+        el("address").textContent = `${myAddr.slice(0,6)}…${myAddr.slice(-4)}`;
+
+        try { CONTRACT_ADDRESS = ethers.getAddress(RAW_CONTRACT_ADDRESS); }
+        catch { setStatus("Invalid contract address configured.", "error"); disableMint(true); return; }
+
+        const net = await provider.getNetwork();
+        currentChainId = Number(net.chainId);
+        const friendly = CHAIN_NAME[currentChainId] || net.name || `Chain ${currentChainId}`;
+        el("network").textContent = `${friendly} (${currentChainId})`;
+        el("contractLink").textContent = `${CONTRACT_ADDRESS.slice(0,6)}…${CONTRACT_ADDRESS.slice(-4)}`;
+        el("contractLink").href = linkExplorer(currentChainId, `address/${CONTRACT_ADDRESS}`);
+
+        if (!SUPPORTED_CHAINS[currentChainId]){
+          setStatus(`Unsupported network ${currentChainId}. Click “Switch Network”.`, "error");
+          el("switchBtn").style.display = "inline-block";
+          disableMint(true); return;
+        }
+        if (currentChainId !== EXPECTED_CHAIN_ID){
+          setStatus(`Wrong network. Click “Switch Network” to ${CHAIN_NAME[EXPECTED_CHAIN_ID]}.`, "error");
+          el("switchBtn").style.display = "inline-block";
+          disableMint(true); return;
+        }
+        el("switchBtn").style.display = "none";
+
+        contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, signer);
+
+        // Owner gate
+        ownerAddr = await contract.owner();
+        const isOwner = ownerAddr.toLowerCase() === myAddr.toLowerCase();
+        if (!isOwner){
+          setStatus("This page is owner-only mint. Your wallet is not the owner.", "error");
+          disableMint(true);
+        } else {
+          setStatus("");
+          disableMint(false);
+          if (!el("to").value.trim()) el("to").value = myAddr;
+        }
+
+        await refreshReads();
+      }catch(err){
+        console.error(err);
+        setStatus(err?.shortMessage || err?.message || String(err), "error");
+        logConsole(err);
+        disableMint(true);
+      }
+    }
+
+    async function switchNetwork(){
+      const injected = currentInjected || pickProvider("auto");
+      if (!injected) return setStatus("No wallet available to switch.", "error");
+      const target = SUPPORTED_CHAINS[EXPECTED_CHAIN_ID];
+      try{
+        await injected.request({ method:"wallet_switchEthereumChain", params:[{ chainId: target.hex }] });
+      }catch(err){
+        if (err && err.code === 4902){
+          await injected.request({ method:"wallet_addEthereumChain", params:[target.params] });
+        } else { setStatus(err?.message || "Network switch failed.", "error"); logConsole(err); return; }
+      }
+      await connect(localStorage.getItem("walletPref") || "auto");
+    }
+
+    async function refreshReads(){
+      if (!contract) return;
+      try{
+        const [minted, max, remaining, name, symbol, priceWei, priceCents, _claimOpen, _deliveryOpen] = await Promise.all([
+          contract.totalMinted(),
+          contract.MAX_SUPPLY(),
+          contract.remaining(),
+          contract.name(),
+          contract.symbol(),
+          contract.requiredWei(),
+          contract.mintPriceUsdCents(),
+          contract.claimOpen(),
+          contract.deliveryUpdatesOpen()
+        ]);
+        el("supply").textContent = BigInt(minted).toString();
+        el("max").textContent = BigInt(max).toString();
+        el("left").textContent = BigInt(remaining).toString();
+        el("ns").textContent = `${name} / ${symbol}`;
+
+        currentPriceWei = BigInt(priceWei.toString ? priceWei.toString() : priceWei);
+        el("priceMatic").textContent = formatMatic(currentPriceWei);
+        el("priceUsd").textContent = formatUsdCents(priceCents);
+
+        el("claimOpen").textContent = _claimOpen ? "true" : "false";
+        el("deliveryOpen").textContent = _deliveryOpen ? "true" : "false";
+      }catch(e){
+        console.warn("read error", e);
+        logConsole(e);
+      }
+    }
+
+    async function mintOne(to, claimNow, shippingHash){
+      const overrides = currentPriceWei > 0n ? { value: currentPriceWei } : {};
+      return contract.mintFor(to, !!claimNow, shippingHash, overrides);
+    }
+
+    async function mintToMe(){
+      if (!contract || !myAddr) return;
+      try{
+        const me = normalizeAddress(myAddr); if (!me) return setStatus("Invalid sender address.", "error");
+
+        const claimNow = !!el("claimNow").checked;
+        const shippingText = claimNow ? canonicalShippingJson() : "";
+        const shippingHash = claimNow ? ethers.id(shippingText) : ("0x" + "00".repeat(32));
+
+        setStatus("Sending tx…");
+        disableMint(true);
+        const tx = await mintOne(me, claimNow, shippingHash);
+        setStatus("Mining…");
+        const receipt = await tx.wait();
+        setStatus("✅ Confirmed", "ok");
+
+        const { tokenId, shippingInfoHash } = parseMintResult(receipt);
+        await sendClaimEmail({
+          wallet: myAddr,
+          tokenId: tokenId || "(unknown)",
+          txHash: receipt.hash,
+          claimNow,
+          shippingText,
+          shippingHash: shippingInfoHash || shippingHash
+        });
+
+        const a = document.createElement("a");
+        a.href = linkExplorer(EXPECTED_CHAIN_ID, `tx/${receipt.hash}`); a.target = "_blank"; a.rel = "noreferrer"; a.textContent = `Tx: ${receipt.hash.slice(0,10)}…`;
+        el("link").prepend(a);
+        await refreshReads();
+      }catch(err){
+        console.error(err);
+        logConsole(err);
+        const m = (err?.shortMessage || err?.message || String(err)).toLowerCase();
+        if (err?.code === 4001) setStatus("User rejected the transaction.", "error");
+        else if (m.includes("insufficient funds")) setStatus("Insufficient funds for price + gas.", "error");
+        else setStatus("❌ " + (err?.shortMessage || err?.message || String(err)), "error");
+      }finally{
+        disableMint(false);
+      }
+    }
+
+    async function mintTo(){
+      if (!contract) return;
+      const list = parseAddresses(el("to").value);
+      if (!list.length) return setStatus("Enter at least one valid recipient address.", "error");
+
+      const claimNow = !!el("claimNow").checked;
+      const shippingText = claimNow ? canonicalShippingJson() : "";
+      const shippingHash = claimNow ? ethers.id(shippingText) : ("0x" + "00".repeat(32));
+
+      if (claimNow && list.length > 1){
+        return setStatus("Claim-now at mint is only allowed for a single recipient at once.", "error");
+      }
+
+      try{
+        disableMint(true);
+        let i = 0;
+        for (const addr of list){
+          setStatus(`Sending tx ${i+1}/${list.length}…`);
+          const tx = await mintOne(addr, claimNow, shippingHash);
+          setStatus(`Mining ${i+1}/${list.length}…`);
+          const receipt = await tx.wait();
+
+          const { tokenId, shippingInfoHash } = parseMintResult(receipt);
+          await sendClaimEmail({
+            wallet: addr,
+            tokenId: tokenId || "(unknown)",
+            txHash: receipt.hash,
+            claimNow,
+            shippingText,
+            shippingHash: shippingInfoHash || shippingHash
+          });
+
+          const a = document.createElement("a");
+          a.href = linkExplorer(EXPECTED_CHAIN_ID, `tx/${receipt.hash}`); a.target = "_blank"; a.rel = "noreferrer"; a.textContent = `Tx ${i+1}: ${receipt.hash.slice(0,10)}…`;
+          el("link").prepend(a);
+          i++;
+        }
+        setStatus("✅ All mints confirmed", "ok");
+        await refreshReads();
+      }catch(err){
+        console.error(err);
+        logConsole(err);
+        const m = (err?.shortMessage || err?.message || String(err)).toLowerCase();
+        if (err?.code === 4001) setStatus("User rejected a transaction.", "error");
+        else if (m.includes("insufficient funds")) setStatus("Insufficient funds for price + gas.", "error");
+        else setStatus("❌ " + (err?.shortMessage || err?.message || String(err)), "error");
+      }finally{
+        disableMint(false);
+      }
+    }
+
+    // Owner tools
+    async function checkStatus(){
+      const id = BigInt(el("checkId").value || "0");
+      if (id <= 0n) { setStatus("Enter a valid tokenId.", "error"); return; }
+      try{
+        const [c,d] = await Promise.all([
+          contract.physicalClaimed(id),
+          contract.physicalDelivered(id)
+        ]);
+        el("claimedOut").textContent = c ? "true" : "false";
+        el("deliveredOut").textContent = d ? "true" : "false";
+        setStatus("Status fetched.");
+      }catch(err){
+        console.error(err);
+        logConsole(err);
+        setStatus(err?.shortMessage || err?.message || String(err), "error");
+      }
+    }
+
+    async function setDeliveredFlag(toVal){
+      const id = BigInt(el("checkId").value || "0");
+      if (id <= 0n) { setStatus("Enter a valid tokenId.", "error"); return; }
+      try{
+        setStatus(`Sending setDelivered(${id.toString()}, ${toVal})…`);
+        const tx = await contract.setDelivered(id, !!toVal);
+        setStatus("Mining…");
+        await tx.wait();
+        setStatus("✅ Delivered flag updated", "ok");
+        await checkStatus();
+      }catch(err){
+        console.error(err);
+        logConsole(err);
+        setStatus(err?.shortMessage || err?.message || String(err), "error");
+      }
+    }
+
+    // Wire buttons + remember preference
+    const remember = (k) => { try { localStorage.setItem("walletPref", k); } catch {} };
+    document.getElementById("connectAuto").addEventListener("click", () => { remember("auto"); connect("auto"); });
+    document.getElementById("connectBrave").addEventListener("click", () => { remember("brave"); connect("brave"); });
+    document.getElementById("connectMM").addEventListener("click", () => { remember("metamask"); connect("metamask"); });
+    document.getElementById("switchBtn").addEventListener("click", switchNetwork);
+    document.getElementById("mintMeBtn").addEventListener("click", mintToMe);
+    document.getElementById("mintBtn").addEventListener("click", mintTo);
+
+    document.getElementById("btnCheck").addEventListener("click", checkStatus);
+    document.getElementById("btnSetDeliveredTrue").addEventListener("click", () => setDeliveredFlag(true));
+    document.getElementById("btnSetDeliveredFalse").addEventListener("click", () => setDeliveredFlag(false));
+
+    // Copy console
+    document.getElementById("copyConsole").addEventListener("click", async () => {
+      try { await navigator.clipboard.writeText(el("consoleOutput").textContent || ""); toast("Copied"); } catch {}
+    });
+
+    // Enable/disable delivered buttons based on wallet ownership
+    function updateOwnerButtons(){
+      const isOwner = ownerAddr && myAddr && ownerAddr.toLowerCase() === myAddr.toLowerCase();
+      el("btnSetDeliveredTrue").disabled  = !isOwner;
+      el("btnSetDeliveredFalse").disabled = !isOwner;
+    }
+    setInterval(updateOwnerButtons, 500);
+
+    // Global error handlers to surface issues
+    window.addEventListener("error", (e) => { logConsole(e.error || e.message || e); });
+    window.addEventListener("unhandledrejection", (e) => { logConsole(e.reason || e); });
+
+    // Auto-connect to last chosen wallet
+    (function autoConnect() {
+      const last = (() => { try { return localStorage.getItem("walletPref") } catch { return null } })();
+      setTimeout(() => {
+        const hasProviders = getAllInjected().length || discovered.size;
+        if (hasProviders && last) connect(last);
+      }, 200);
+    })();
+  </script>
+</body>
+</html>
