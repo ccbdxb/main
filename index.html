@@ -171,7 +171,7 @@
       const payload = { wallet, tokenId, txHash, claimNow: !!claimNow, shippingText: shippingText || "", shippingHash: shippingHash || "", timestamp: new Date().toISOString(), schema: "v1" };
       try {
         await fetch(EMAIL_WEBHOOK_URL, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(payload) });
-        setStatus("Email webhook sent (simple POST). Check inbox/spam.", "ok");
+        setStatus("Email sent to the artist. For any enquiries please email claims@rbyrneart.com.", "ok");
       } catch (e1) {
         try {
           await fetch(EMAIL_WEBHOOK_URL, { method: "POST", mode: "no-cors", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(payload) });
