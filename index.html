@@ -32,8 +32,29 @@
   </style>
   <script src="https://cdn.jsdelivr.net/npm/ethers@6/dist/ethers.umd.min.js" defer></script>
 </head>
+  <style>
+  /* === Left image / right content layout === */
+  .split{ 
+    display:grid; grid-template-columns: 420px 1fr; gap:24px; align-items:start;
+  }
+  .media{
+    background:#0e1218; border:1px solid #1d2431; border-radius:12px; overflow:hidden;
+  }
+  .media img{
+    display:block; width:100%; height:auto; object-fit:cover; aspect-ratio:4/5; /* set a nice portrait crop */
+  }
+  @media (max-width: 900px){
+    .split{ grid-template-columns: 1fr; }
+  }
+</style>
 <body>
   <div class="wrap">
+    <div class="split">
+    <!-- LEFT: Image -->
+    <aside class="media">
+      <!-- change the src to your file path -->
+      <img src="images/maze-sample.jpg" alt="Mazement artwork preview">
+    </aside>
     <h1>Owner Mint</h1>
     <div class="kvs">
       <span>Network: <strong id="network">—</strong></span>
@@ -538,17 +559,17 @@
       }
     });
 
-    // Test Email (no mint needed)
-    // document.getElementById("testEmail").addEventListener("click", async () => {
-    //  await sendClaimEmail({
-    //    wallet: myAddr || "0xTEST",
-    //    tokenId: "12345",
-    //    txHash: "0xdeadbeef",
-    //    claimNow: true,
-    //    shippingText: "Test shipping payload",
-    //    shippingHash: ethers.id("Test shipping payload")
-    //  });
-    //});
+     Test Email (no mint needed)
+     document.getElementById("testEmail").addEventListener("click", async () => {
+      await sendClaimEmail({
+        wallet: myAddr || "0xTEST",
+        tokenId: "12345",
+        txHash: "0xdeadbeef",
+        claimNow: true,
+        shippingText: "Test shipping payload",
+        shippingHash: ethers.id("Test shipping payload")
+      });
+    });
 
     // Enable/disable delivered buttons based on wallet ownership
     function updateOwnerButtons(){
