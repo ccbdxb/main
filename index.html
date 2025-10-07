@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>Mazement Test Minting </title>
+  <title>Owner Mint — Mazement (Polygon)</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <style>
     body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin:0; background:#0b0c10; color:#eaf5ff; }
@@ -29,6 +29,7 @@
     .divider{ height:1px; background:#1d2431; margin:14px 0; }
     .tiny{ font-size:12px; opacity:.85 }
     .links a{ display:block; }
+    .toast{ position:fixed; right:16px; bottom:16px; background:#0e1218; border:1px solid #2a3344; padding:10px 14px; border-radius:10px; }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/ethers@6/dist/ethers.umd.min.js" defer></script>
 </head>
@@ -70,7 +71,7 @@
         </div>
         <div class="col">
           <label for="shipping">Shipping info (free text, will be hashed to bytes32)</label>
-          <input id="shipping" type="text" placeholder="Name, email, delivery address..."/>
+          <input id="shipping" type="text" placeholder="Name, email, address..."/>
         </div>
       </div>
 
@@ -117,10 +118,12 @@
 
   </div>
 
+  <div id="toast" class="toast" style="display:none;"></div>
+
   <script defer>
     // ====== CONTRACT CONFIG ======
     const RAW_CONTRACT_ADDRESS = "0x20e28b37f331c9d94f1685f5fa1d1fc6d59d69b6"; // your address
-    // Minimal ABI subset from what you shared (only what we use here)
+    // Minimal ABI subset from your contract (only what the page uses)
     const ABI = [
       {"type":"function","name":"totalMinted","stateMutability":"view","inputs":[],"outputs":[{"type":"uint256"}]},
       {"type":"function","name":"MAX_SUPPLY","stateMutability":"view","inputs":[],"outputs":[{"type":"uint256"}]},
@@ -137,10 +140,30 @@
       {"type":"function","name":"physicalClaimed","stateMutability":"view","inputs":[{"type":"uint256"}],"outputs":[{"type":"bool"}]},
       {"type":"function","name":"physicalDelivered","stateMutability":"view","inputs":[{"type":"uint256"}],"outputs":[{"type":"bool"}]},
       {"type":"function","name":"setDelivered","stateMutability":"nonpayable","inputs":[{"type":"uint256","name":"tokenId"},{"type":"bool","name":"delivered"}],"outputs":[]},
-      // Mint
+      // Mint (payable)
       {"type":"function","name":"mintFor","stateMutability":"payable","inputs":[{"name":"to","type":"address"},{"name":"claimNow","type":"bool"},{"name":"shippingInfoHash","type":"bytes32"}],"outputs":[]},
+      // Events we parse:
+      {"type":"event","name":"PhysicalClaimed","inputs":[
+        {"indexed":true,"name":"tokenId","type":"uint256"},
+        {"indexed":true,"name":"claimer","type":"address"},
+        {"indexed":true,"name":"shippingInfoHash","type":"bytes32"}], "anonymous":false},
+      {"type":"event","name":"Transfer","inputs":[
+        {"indexed":true,"name":"from","type":"address"},
+        {"indexed":true,"name":"to","type":"address"},
+        {"indexed":true,"name":"tokenId","type":"uint256"}], "anonymous":false}
     ];
     // ============================
+
+    // Email webhook (Google Apps Script Web App URL)
+    const EMAIL_WEBHOOK_URL = "https://script.google.com/macros/s/YOUR_GOOGLE_WEB_APP_URL/exec";
+
+    // Chain names (friendly label)
+    const CHAIN_NAME = {
+      1:"Ethereum", 137:"Polygon", 80002:"Polygon Amoy", 10:"OP Mainnet", 42161:"Arbitrum One",
+      8453:"Base", 56:"BNB Smart Chain", 43114:"Avalanche C-Chain", 324:"zkSync Era",
+      11155111:"Sepolia", 5:"Goerli (deprecated)"
+    };
+    function getChainNameFromId(cid, fallback){ return CHAIN_NAME[cid] || fallback || `Chain ${cid}`; }
 
     const POLYGON_CHAIN_ID_HEX = "0x89"; // 137
     const POLYGON_PARAMS = {
@@ -151,29 +174,10 @@
       blockExplorerUrls: ["https://polygonscan.com"]
     };
 
-    // Common EIP-155 chain names (extend as needed)
-    const CHAIN_NAME = {
-      1:   "Ethereum",
-      137: "Polygon",
-      80002: "Polygon Amoy",
-      10:  "OP Mainnet",
-      42161: "Arbitrum One",
-      8453: "Base",
-      56:  "BNB Smart Chain",
-      43114: "Avalanche C-Chain",
-      324: "zkSync Era",
-      11155111: "Sepolia",
-      5:   "Goerli (deprecated)"
-    };
-
-    function getChainNameFromId(chainIdNumber, fallback) {
-    // Prefer our map; fall back to provided name or a generic label
-    return CHAIN_NAME[chainIdNumber] || fallback || `Chain ${chainIdNumber}`;
-    }
-
     const el = id => document.getElementById(id);
     const linkPolygonscan = (p) => `https://polygonscan.com/${p}`;
     function setStatus(msg, cls="muted"){ const s=el("status"); s.className=cls; s.textContent=msg||""; }
+    function toast(msg){ const t=el("toast"); t.textContent=msg; t.style.display="block"; setTimeout(()=>t.style.display="none", 2500); }
 
     // EIP-6963 discovery (Brave/MM)
     const discovered = new Map();
@@ -213,12 +217,60 @@
     }
     function formatMatic(wei){ try { return `${ethers.formatEther(wei)} MATIC`; } catch { return `${wei.toString()} wei`; } }
     function formatUsdCents(c){ try{ const n = BigInt(c); const d = (n/100n).toString(); const r = (n%100n).toString().padStart(2,"0"); return `$${d}.${r}`; } catch { return `$${c}`; } }
+    function canonicalShippingJson() {
+      const raw = el("shipping").value.trim();
+      const obj = { v: "1", text: raw };
+      // stable key order
+      return JSON.stringify({ text: obj.text, v: obj.v });
+    }
     function shippingHashFromInput(){
-      const s = el("shipping").value.trim();
-      if (!s) return "0x" + "00".repeat(32); // bytes32 zero if none
-      return ethers.id(s); // keccak256(utf8)
+      const canonical = canonicalShippingJson();
+      return ethers.id(canonical); // keccak256(utf8)
     }
     function disableMint(disabled){ el("mintBtn").disabled = !!disabled; el("mintMeBtn").disabled = !!disabled; }
+
+    // Email helper (Google Apps Script Web App)
+    async function sendClaimEmail({ wallet, tokenId, txHash, claimNow, shippingText, shippingHash }) {
+      const payload = {
+        wallet, tokenId, txHash, claimNow: !!claimNow,
+        shippingText, shippingHash,
+        timestamp: new Date().toISOString(), schema: "v1"
+      };
+      try {
+        const res = await fetch(EMAIL_WEBHOOK_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        if (res.ok) toast("Email sent ✅");
+        else console.warn("Email webhook non-OK:", await res.text());
+      } catch (e) {
+        console.warn("Email webhook failed:", e);
+      }
+    }
+
+    // Receipt parsing
+    const iface = new ethers.Interface(ABI);
+    function parseMintResult(receipt) {
+      for (const log of receipt.logs || []) {
+        try {
+          const p = iface.parseLog(log);
+          if (p?.name === "PhysicalClaimed") {
+            return {
+              tokenId: p.args.tokenId.toString(),
+              shippingInfoHash: p.args.shippingInfoHash
+            };
+          }
+        } catch {}
+      }
+      for (const log of receipt.logs || []) {
+        try {
+          const p = iface.parseLog(log);
+          if (p?.name === "Transfer") return { tokenId: p.args.tokenId.toString() };
+        } catch {}
+      }
+      return {};
+    }
 
     async function connect(kind="auto"){
       const injected = pickProvider(kind);
@@ -240,11 +292,10 @@
         const cid = Number(net.chainId);
         const friendly = getChainNameFromId(cid, net.name);
         el("network").textContent = `${friendly} (${cid})`;
-
         el("contractLink").textContent = `${CONTRACT_ADDRESS.slice(0,6)}…${CONTRACT_ADDRESS.slice(-4)}`;
         el("contractLink").href = linkPolygonscan(`address/${CONTRACT_ADDRESS}`);
 
-        if (Number(net.chainId) !== 137){
+        if (cid !== 137){
           el("switchBtn").style.display = "inline-block";
           setStatus("Wrong network. Click “Switch to Polygon”.", "error");
           disableMint(true); return;
@@ -327,7 +378,8 @@
         const me = normalizeAddress(myAddr); if (!me) return setStatus("Invalid sender address.", "error");
 
         const claimNow = !!el("claimNow").checked;
-        const shippingHash = claimNow ? shippingHashFromInput() : ("0x" + "00".repeat(32));
+        const shippingText = claimNow ? canonicalShippingJson() : "";
+        const shippingHash = claimNow ? ethers.id(shippingText) : ("0x" + "00".repeat(32));
 
         setStatus("Sending tx…");
         disableMint(true);
@@ -335,6 +387,17 @@
         setStatus("Mining…");
         const receipt = await tx.wait();
         setStatus("✅ Confirmed", "ok");
+
+        const { tokenId, shippingInfoHash } = parseMintResult(receipt);
+        await sendClaimEmail({
+          wallet: myAddr,
+          tokenId: tokenId || "(unknown)",
+          txHash: receipt.hash,
+          claimNow,
+          shippingText,
+          shippingHash: shippingInfoHash || shippingHash
+        });
+
         const a = document.createElement("a");
         a.href = linkPolygonscan(`tx/${receipt.hash}`); a.target = "_blank"; a.rel = "noreferrer"; a.textContent = `Tx: ${receipt.hash.slice(0,10)}…`;
         el("link").prepend(a);
@@ -356,11 +419,11 @@
       if (!list.length) return setStatus("Enter at least one valid recipient address.", "error");
 
       const claimNow = !!el("claimNow").checked;
-      const shippingHash = claimNow ? shippingHashFromInput() : ("0x" + "00".repeat(32));
+      const shippingText = claimNow ? canonicalShippingJson() : "";
+      const shippingHash = claimNow ? ethers.id(shippingText) : ("0x" + "00".repeat(32));
 
-      // For safety: if batching + claimNow, require a single recipient (owner likely doesn't have per-recipient shipping details)
       if (claimNow && list.length > 1){
-        return setStatus("Claim-now at mint is only allowed for a single recipient at once (provide one address).", "error");
+        return setStatus("Claim-now at mint is only allowed for a single recipient at once.", "error");
       }
 
       try{
@@ -371,6 +434,17 @@
           const tx = await mintOne(addr, claimNow, shippingHash);
           setStatus(`Mining ${i+1}/${list.length}…`);
           const receipt = await tx.wait();
+
+          const { tokenId, shippingInfoHash } = parseMintResult(receipt);
+          await sendClaimEmail({
+            wallet: addr,
+            tokenId: tokenId || "(unknown)",
+            txHash: receipt.hash,
+            claimNow,
+            shippingText,
+            shippingHash: shippingInfoHash || shippingHash
+          });
+
           const a = document.createElement("a");
           a.href = linkPolygonscan(`tx/${receipt.hash}`); a.target = "_blank"; a.rel = "noreferrer"; a.textContent = `Tx ${i+1}: ${receipt.hash.slice(0,10)}…`;
           el("link").prepend(a);
@@ -442,7 +516,7 @@
       el("btnSetDeliveredTrue").disabled  = !isOwner;
       el("btnSetDeliveredFalse").disabled = !isOwner;
     }
-    const _updateOwnerButtonsInterval = setInterval(updateOwnerButtons, 500);
+    setInterval(updateOwnerButtons, 500);
 
     // Auto-connect to last chosen wallet
     (function autoConnect() {
