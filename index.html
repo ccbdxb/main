@@ -30,23 +30,11 @@
     .tiny{ font-size:12px; opacity:.85 }
     .links a{ display:block; }
     .layout{display:grid;grid-template-columns:minmax(240px,340px) 1fr;gap:24px;align-items:start}
-    .art{background:#fff;border:1px solid #1d2431;border-radius:12px;padding:10px}
-    .art img{display:block;width:100%;height:auto;border-radius:8px}
-    .caption{font-size:12px;opacity:.8;margin-top:8px;text-align:center;color:#000;}
-    @media (max-width:860px){.layout{grid-template-columns:1fr}}
   </style>
   <script src="https://cdn.jsdelivr.net/npm/ethers@6/dist/ethers.umd.min.js" defer></script>
 </head>
 <body>
   <div class="wrap">
-    <div class="layout">
-    <!-- Left: maze image -->
-    <aside class="art">
-      <!-- put the actual filename below; path is relative to index.html -->
-      <img src="images/mazement_preview.png" alt="Mazement preview"
-           width="640" height="640" loading="eager" decoding="async" />
-      <div class="caption">Mazement preview</div>
-    </aside>
     <h1>Owner Mint</h1>
     <div class="kvs">
       <span>Network: <strong id="network">—</strong></span>
