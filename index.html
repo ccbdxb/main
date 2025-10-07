@@ -538,17 +538,17 @@
       }
     });
 
-     Test Email (no mint needed)
-     document.getElementById("testEmail").addEventListener("click", async () => {
-      await sendClaimEmail({
-        wallet: myAddr || "0xTEST",
-        tokenId: "12345",
-        txHash: "0xdeadbeef",
-        claimNow: true,
-        shippingText: "Test shipping payload",
-        shippingHash: ethers.id("Test shipping payload")
-      });
-    });
+    // Test Email (no mint needed)
+    // document.getElementById("testEmail").addEventListener("click", async () => {
+    //  await sendClaimEmail({
+    //    wallet: myAddr || "0xTEST",
+    //    tokenId: "12345",
+    //    txHash: "0xdeadbeef",
+    //    claimNow: true,
+    //    shippingText: "Test shipping payload",
+    //    shippingHash: ethers.id("Test shipping payload")
+    //  });
+    //});
 
     // Enable/disable delivered buttons based on wallet ownership
     function updateOwnerButtons(){
