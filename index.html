@@ -110,32 +110,6 @@
 
     <div class="divider"></div>
 
-    <!-- Owner tools -->
-    <h3 style="margin:0 0 8px;">Owner Tools — Physical Delivery</h3>
-    <div class="panel">
-      <div class="grid">
-        <div class="col">
-          <label for="checkId">Token ID</label>
-          <input id="checkId" type="number" min="1" placeholder="eg. 1" />
-          <div class="stack">
-            <button id="btnCheck">Check Status</button>
-          </div>
-          <div class="tiny" style="margin-top:8px;">
-            Claimed: <strong id="claimedOut">—</strong> &nbsp; Delivered: <strong id="deliveredOut">—</strong>
-          </div>
-        </div>
-        <div class="col">
-          <label>Set Delivered</label>
-          <div class="stack">
-            <button id="btnSetDeliveredTrue" disabled>Set Delivered = true</button>
-            <button id="btnSetDeliveredFalse" disabled>Set Delivered = false</button>
-          </div>
-          <div class="tiny" style="margin-top:8px;">
-            claimOpen: <strong id="claimOpen">—</strong> &nbsp; deliveryUpdatesOpen: <strong id="deliveryOpen">—</strong>
-          </div>
-        </div>
-      </div>
-    </div>
     </main>
   </div>
 
@@ -359,8 +333,6 @@
         el("priceMatic").textContent = formatMatic(currentPriceWei);
         el("priceUsd").textContent = formatUsdCents(priceCents);
 
-        el("claimOpen").textContent = _claimOpen ? "true" : "false";
-        el("deliveryOpen").textContent = _deliveryOpen ? "true" : "false";
       }catch(e){
         console.warn("read error", e);
       }
@@ -466,40 +438,6 @@
       }
     }
 
-    // Owner tools
-    async function checkStatus(){
-      const id = BigInt(el("checkId").value || "0");
-      if (id <= 0n) { setStatus("Enter a valid tokenId.", "error"); return; }
-      try{
-        const [c,d] = await Promise.all([
-          contract.physicalClaimed(id),
-          contract.physicalDelivered(id)
-        ]);
-        el("claimedOut").textContent = c ? "true" : "false";
-        el("deliveredOut").textContent = d ? "true" : "false";
-        setStatus("Status fetched.");
-      }catch(err){
-        console.error(err);
-        setStatus(err?.shortMessage || err?.message || String(err), "error");
-      }
-    }
-
-    async function setDeliveredFlag(toVal){
-      const id = BigInt(el("checkId").value || "0");
-      if (id <= 0n) { setStatus("Enter a valid tokenId.", "error"); return; }
-      try{
-        setStatus(`Sending setDelivered(${id.toString()}, ${toVal})…`);
-        const tx = await contract.setDelivered(id, !!toVal);
-        setStatus("Mining…");
-        await tx.wait();
-        setStatus("✅ Delivered flag updated", "ok");
-        await checkStatus();
-      }catch(err){
-        console.error(err);
-        setStatus(err?.shortMessage || err?.message || String(err), "error");
-      }
-    }
-
     // Wire buttons + remember preference
     const remember = (k) => { try { localStorage.setItem("walletPref", k); } catch {} };
     document.getElementById("connectAuto").addEventListener("click", () => { remember("auto"); connect("auto"); });
@@ -508,10 +446,6 @@
     document.getElementById("switchBtn").addEventListener("click", switchToPolygon);
     document.getElementById("mintMeBtn").addEventListener("click", mintToMe);
     document.getElementById("mintBtn").addEventListener("click", mintTo);
-
-    document.getElementById("btnCheck").addEventListener("click", checkStatus);
-    document.getElementById("btnSetDeliveredTrue").addEventListener("click", () => setDeliveredFlag(true));
-    document.getElementById("btnSetDeliveredFalse").addEventListener("click", () => setDeliveredFlag(false));
 
     // Legacy direct connect (fallback)
     document.getElementById("connectLegacy").addEventListener("click", async () => {
@@ -565,16 +499,6 @@
         shippingHash: hash
       });
     });
-
-    // Enable/disable delivered + mint buttons when claim/shipping change
-    function updateOwnerButtons(){
-      const isOwner = ownerAddr && myAddr && ownerAddr.toLowerCase() === myAddr.toLowerCase();
-      el("btnSetDeliveredTrue").disabled  = !isOwner;
-      el("btnSetDeliveredFalse").disabled = !isOwner;
-    }
-    setInterval(updateOwnerButtons, 500);
-    el("claimNow").addEventListener("change", updateMintButtonsEnabled);
-    el("shipping").addEventListener("input", updateMintButtonsEnabled);
 
     // Auto-connect to last chosen wallet
     (function autoConnect() {
