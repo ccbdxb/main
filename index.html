@@ -221,7 +221,7 @@
     }
     function formatMatic(wei){ try { return `${ethers.formatEther(wei)} MATIC`; } catch { return `${wei.toString()} wei`; } }
     function formatUsdCents(c){ try{ const n = BigInt(c); const d = (n/100n).toString(); const r = (n%100n).toString().padStart(2,"0"); return `$${d}.${r}`; } catch { return `$${c}`; } }
-
+   
     // Canonical shipping text + dynamic shipping hash based on checkbox
     function canonicalShippingJson() {
       const text = el("shipping").value.trim().replace(/\s+/g, " ");
@@ -242,6 +242,11 @@
       const ready = !!contract && isOwner;  // don't gate on claim/shipping here
       el("mintMeBtn").disabled = !ready;
       el("mintBtn").disabled   = !ready;
+    }
+
+    async function quotePriceWei() {
+      const p = await contract.requiredWei();
+      return BigInt(p.toString());
     }
 
     async function connect(kind="auto"){
@@ -339,9 +344,23 @@
     }
 
     async function mintOne(to, claimNow, shippingHash){
-      const price = await contract.requiredWei();
-      const overrides = (BigInt(price.toString()) > 0n) ? { value: price } : {};
-      return contract.mintFor(to, !!claimNow, shippingHash, overrides);
+      let price = await quotePriceWei();
+      try {
+        return await contract.mintFor(to, !!claimNow, shippingHash, { value: price });
+      } catch (e) {
+        const msg = (e?.shortMessage || e?.message || "").toLowerCase();
+        const needRetry =
+          msg.includes("incorrect eth") ||
+          msg.includes("invalid msg.value") ||
+          msg.includes("insufficient") ||
+          msg.includes("price") ||
+          e?.reason === "Incorrect ETH.";
+    
+        if (!needRetry) throw e;
+    
+        price = await quotePriceWei();
+        return await contract.mintFor(to, !!claimNow, shippingHash, { value: price });
+      }
     }
 
     async function mintToMe(){
@@ -376,13 +395,17 @@
         a.href = linkPolygonscan(`tx/${receipt.hash}`); a.target = "_blank"; a.rel = "noreferrer"; a.textContent = `Tx: ${receipt.hash.slice(0,10)}…`;
         el("link").prepend(a);
         await refreshReads();
-      }catch(err){
-        console.error(err);
-        const m = (err?.shortMessage || err?.message || String(err)).toLowerCase();
+      } catch (err) {
+      console.error(err);
+        const m = (err?.shortMessage || err?.message || "").toLowerCase();
         if (err?.code === 4001) setStatus("User rejected the transaction.", "error");
-        else if (m.includes("insufficient funds")) setStatus("Insufficient funds for price + gas.", "error");
-        else setStatus("❌ " + (err?.shortMessage || err?.message || String(err)), "error");
-      }finally{
+        else if (m.includes("incorrect eth") || m.includes("invalid msg.value"))
+          setStatus("Price updated just now—please try again (we’ll auto-requote).", "error");
+        else if (m.includes("insufficient funds"))
+          setStatus("Insufficient funds for price + gas.", "error");
+        else
+          setStatus("❌ " + (err?.shortMessage || err?.message || String(err)), "error");
+      } finally {
         disableMint(false);
       }
     }
@@ -428,13 +451,17 @@
         }
         setStatus("✅ All mints confirmed", "ok");
         await refreshReads();
-      }catch(err){
+      } catch (err) {
         console.error(err);
-        const m = (err?.shortMessage || err?.message || String(err)).toLowerCase();
-        if (err?.code === 4001) setStatus("User rejected a transaction.", "error");
-        else if (m.includes("insufficient funds")) setStatus("Insufficient funds for price + gas.", "error");
-        else setStatus("❌ " + (err?.shortMessage || err?.message || String(err)), "error");
-      }finally{
+        const m = (err?.shortMessage || err?.message || "").toLowerCase();
+        if (err?.code === 4001) setStatus("User rejected the transaction.", "error");
+        else if (m.includes("incorrect eth") || m.includes("invalid msg.value"))
+          setStatus("Price updated just now—please try again (we’ll auto-requote).", "error");
+        else if (m.includes("insufficient funds"))
+          setStatus("Insufficient funds for price + gas.", "error");
+        else
+          setStatus("❌ " + (err?.shortMessage || err?.message || String(err)), "error");
+      } finally {
         disableMint(false);
       }
     }
