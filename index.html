@@ -339,7 +339,8 @@
     }
 
     async function mintOne(to, claimNow, shippingHash){
-      const overrides = currentPriceWei > 0n ? { value: currentPriceWei } : {};
+      const price = await contract.requiredWei();
+      const overrides = (BigInt(price.toString()) > 0n) ? { value: price } : {};
       return contract.mintFor(to, !!claimNow, shippingHash, overrides);
     }
 
