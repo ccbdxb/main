@@ -613,21 +613,27 @@
     <script>
         // Carousel functionality
         let currentSlide = 0;
-        const slides = document.querySelectorAll('.carousel-slide');
-        const totalSlides = slides.length;
-        const track = document.getElementById('carouselTrack');
-        const dotsContainer = document.getElementById('carouselDots');
+        const totalSlides = 6; // Number of slides
+        
+        function initCarousel() {
+            const track = document.getElementById('carouselTrack');
+            const dotsContainer = document.getElementById('carouselDots');
 
-        // Create dots
-        for (let i = 0; i < totalSlides; i++) {
-            const dot = document.createElement('div');
-            dot.className = 'carousel-dot';
-            if (i === 0) dot.classList.add('active');
-            dot.onclick = () => goToSlide(i);
-            dotsContainer.appendChild(dot);
+            // Create dots
+            for (let i = 0; i < totalSlides; i++) {
+                const dot = document.createElement('div');
+                dot.className = 'carousel-dot';
+                if (i === 0) dot.classList.add('active');
+                dot.onclick = () => goToSlide(i);
+                dotsContainer.appendChild(dot);
+            }
+            
+            // Initialize first slide
+            updateCarousel();
         }
 
         function updateCarousel() {
+            const track = document.getElementById('carouselTrack');
             track.style.transform = `translateX(-${currentSlide * 100}%)`;
             
             // Update dots
@@ -648,10 +654,15 @@
             updateCarousel();
         }
 
-        // Auto-advance carousel
-        setInterval(() => {
-            moveCarousel(1);
-        }, 4000);
+        // Initialize on page load
+        window.addEventListener('DOMContentLoaded', () => {
+            initCarousel();
+            
+            // Auto-advance carousel every 4 seconds
+            setInterval(() => {
+                moveCarousel(1);
+            }, 4000);
+        });
 
         // Contract copy function
         function copyContract() {
