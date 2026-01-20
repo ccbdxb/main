@@ -1,543 +1,539 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <title>Mazement Test Minting</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <style>
-    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin:0; background:#0b0c10; color:#eaf5ff; }
-    .wrap { max-width: 1500px; margin: 40px auto; padding: 24px; background:#11141a; border:1px solid #222936; border-radius:16px; }
-    h1 { margin:0 0 8px; }
-    .row { display:flex; justify-content:space-between; padding:10px 12px; background:#0e1218; border:1px solid #1d2431; border-radius:10px; margin-top:10px; }
-    .stack{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
-    .col{ display:flex; flex-direction:column; gap:8px; }
-    .grid{ display:grid; gap:10px; grid-template-columns: 1fr 1fr; }
-    button{ cursor:pointer; padding:10px 14px; border-radius:10px; border:1px solid #2a3344; background:#1f2837; color:#eaf5ff; }
-    button[disabled]{ opacity:.6; cursor:not-allowed; }
-    input[type=text], input[type=number], textarea{
-      width:100%; padding:10px 12px; border-radius:10px; border:1px solid #2a3344; background:#0e1218; color:#eaf5ff;
-    }
-    label{ font-size:14px; opacity:.9 }
-    a{ color:#8ab4ff; }
-    .muted{ opacity:.8 }
-    .error{ color:#ff6b6b }
-    .ok{ color:#6bff95 }
-    .pill{ font-size:12px; padding:4px 8px; border-radius:999px; background:#1b2230; border:1px solid #2a3344; }
-    .kvs{ display:flex; gap:12px; align-items:center; flex-wrap:wrap}
-    .kvs span{ font-size:12px; opacity:.9; }
-    .panel{ padding:12px; border:1px solid #1d2431; border-radius:12px; background:#0e1218; }
-    .divider{ height:1px; background:#1d2431; margin:14px 0; }
-    .tiny{ font-size:12px; opacity:.85 }
-    .links a{ display:block; }
-    .layout{display:grid;grid-template-columns:minmax(240px,340px) 1fr;gap:24px;align-items:start}
-    .art{background:#fff;border:1px solid #1d2431;border-radius:12px;padding:10px}
-    .art img{display:block;width:100%;height:auto}
-    .caption{font-size:12px;opacity:.8;margin-top:8px;text-align:center;color:#000;}
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mazement — Phygital Generative Mazes</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
-    /* Responsive: stack on narrow screens */
-    @media (max-width: 900px) {
-    }
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --bg-dark: #0a0a0f;
+            --bg-card: #1a1a24;
+            --text-primary: #ffffff;
+            --text-secondary: #a0a0b8;
+            --accent: #8b5cf6;
+            --success: #10b981;
+        }
 
-  </style>
-  <script src="https://cdn.jsdelivr.net/npm/ethers@6/dist/ethers.umd.min.js" defer></script>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', sans-serif;
+            background: var(--bg-dark);
+            color: var(--text-primary);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        /* Animated background */
+        .bg-animation {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            opacity: 0.03;
+            background: 
+                linear-gradient(90deg, transparent 95%, var(--primary) 95%),
+                linear-gradient(0deg, transparent 95%, var(--primary) 95%);
+            background-size: 80px 80px;
+            animation: gridMove 20s linear infinite;
+        }
+
+        @keyframes gridMove {
+            0% { transform: translate(0, 0); }
+            100% { transform: translate(80px, 80px); }
+        }
+
+        /* Navigation */
+        nav {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            background: rgba(10, 10, 15, 0.9);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(99, 102, 241, 0.1);
+            padding: 1.5rem 0;
+            z-index: 1000;
+        }
+
+        .nav-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+            list-style: none;
+        }
+
+        .nav-links a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            transition: color 0.3s ease;
+            font-weight: 500;
+        }
+
+        .nav-links a:hover {
+            color: var(--primary);
+        }
+
+        /* Hero Section */
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 8rem 2rem 4rem;
+            position: relative;
+        }
+
+        .hero-content {
+            max-width: 1400px;
+            width: 100%;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4rem;
+            align-items: center;
+        }
+
+        .hero-text h1 {
+            font-size: 4rem;
+            font-weight: 800;
+            line-height: 1.1;
+            margin-bottom: 1.5rem;
+            background: linear-gradient(135deg, var(--text-primary), var(--primary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero-text p {
+            font-size: 1.25rem;
+            color: var(--text-secondary);
+            margin-bottom: 2rem;
+            line-height: 1.8;
+        }
+
+        .cta-buttons {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 1rem 2rem;
+            border-radius: 12px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            border: none;
+            cursor: pointer;
+            font-size: 1rem;
+            display: inline-block;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            color: white;
+            box-shadow: 0 10px 30px rgba(99, 102, 241, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 15px 40px rgba(99, 102, 241, 0.4);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: var(--text-primary);
+            border: 2px solid var(--primary);
+        }
+
+        .btn-secondary:hover {
+            background: var(--primary);
+            transform: translateY(-2px);
+        }
+
+        .hero-gallery {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+        }
+
+        .gallery-item {
+            aspect-ratio: 1;
+            border-radius: 16px;
+            overflow: hidden;
+            position: relative;
+            background: var(--bg-card);
+            border: 1px solid rgba(99, 102, 241, 0.2);
+        }
+
+        .gallery-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.5s ease;
+        }
+
+        .gallery-item:hover img {
+            transform: scale(1.1);
+        }
+
+        /* Section styles */
+        .section {
+            padding: 6rem 2rem;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .section-header {
+            text-align: center;
+            margin-bottom: 4rem;
+        }
+
+        .section-header h2 {
+            font-size: 3rem;
+            font-weight: 800;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, var(--text-primary), var(--primary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .section-header p {
+            font-size: 1.25rem;
+            color: var(--text-secondary);
+        }
+
+        /* Story section */
+        .story-content {
+            background: var(--bg-card);
+            border-radius: 24px;
+            padding: 3rem;
+            border: 1px solid rgba(99, 102, 241, 0.1);
+        }
+
+        .story-content p {
+            font-size: 1.125rem;
+            color: var(--text-secondary);
+            margin-bottom: 1.5rem;
+            line-height: 1.8;
+        }
+
+        /* Feature cards */
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin-top: 3rem;
+        }
+
+        .feature-card {
+            background: var(--bg-card);
+            padding: 2.5rem;
+            border-radius: 20px;
+            border: 1px solid rgba(99, 102, 241, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-5px);
+            border-color: var(--primary);
+            box-shadow: 0 20px 40px rgba(99, 102, 241, 0.2);
+        }
+
+        .feature-icon {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .feature-card h3 {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .feature-card p {
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        /* Promo section */
+        .promo-box {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(139, 92, 246, 0.1));
+            border: 2px solid var(--primary);
+            border-radius: 20px;
+            padding: 3rem;
+            margin-top: 3rem;
+        }
+
+        .promo-box h3 {
+            font-size: 2rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .promo-box ul {
+            list-style: none;
+            font-size: 1.125rem;
+        }
+
+        .promo-box li {
+            padding: 0.75rem 0;
+            border-bottom: 1px solid rgba(99, 102, 241, 0.2);
+            color: var(--text-secondary);
+        }
+
+        .promo-box li:last-child {
+            border-bottom: none;
+        }
+
+        /* Contract section */
+        .contract-info {
+            background: var(--bg-card);
+            border-radius: 20px;
+            padding: 2.5rem;
+            border: 1px solid rgba(99, 102, 241, 0.1);
+        }
+
+        .contract-address {
+            background: rgba(99, 102, 241, 0.1);
+            padding: 1rem 1.5rem;
+            border-radius: 12px;
+            font-family: 'Courier New', monospace;
+            margin: 1.5rem 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            word-break: break-all;
+        }
+
+        .copy-btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.875rem;
+            transition: all 0.3s ease;
+            margin-left: 1rem;
+            white-space: nowrap;
+        }
+
+        .copy-btn:hover {
+            background: var(--primary-dark);
+        }
+
+        .contract-links {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+
+        .contract-links a {
+            flex: 1;
+            text-align: center;
+        }
+
+        /* Footer */
+        footer {
+            background: var(--bg-card);
+            border-top: 1px solid rgba(99, 102, 241, 0.1);
+            padding: 3rem 2rem;
+            text-align: center;
+        }
+
+        footer p {
+            color: var(--text-secondary);
+            margin-bottom: 1rem;
+        }
+
+        /* Responsive */
+        @media (max-width: 968px) {
+            .hero-content {
+                grid-template-columns: 1fr;
+            }
+
+            .hero-text h1 {
+                font-size: 2.5rem;
+            }
+
+            .nav-links {
+                gap: 1rem;
+                flex-wrap: wrap;
+            }
+
+            .section-header h2 {
+                font-size: 2rem;
+            }
+
+            .features {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
 </head>
 <body>
-  <div class="wrap">
-    <div class="layout">
-    <!-- LEFT -->
-    <aside class="side">
-      <aside class="art">
-      <!-- put the actual filename below; path is relative to index.html -->
-      <img src="images/mazement_preview.png" alt="Mazement preview"
-           width="640" height="640" loading="eager" decoding="async" />
-      <div class="caption">Mazement preview</div>
-    </aside>
-    </aside>
-    <main class="right">
-    <h1>Owner Mint</h1>
-    <div class="kvs">
-      <span>Network: <strong id="network">—</strong></span>
-      <span>Contract: <a id="contractLink" href="#" target="_blank" rel="noreferrer">—</a></span>
-      <span>Name/Symbol: <strong id="ns">—</strong></span>
-    </div>
+    <div class="bg-animation"></div>
 
-    <!-- Wallet controls -->
-    <div class="stack" style="margin:12px 0 16px;">
-      <button id="connectAuto">Connect (Auto)</button>
-      <button id="connectBrave">Connect with Brave</button>
-      <button id="connectMM">Connect with MetaMask</button>
-      <button id="connectLegacy">Force Connect (Legacy)</button>
-     <!-- <button id="testEmail">Test Email</button> -->
-      <button id="switchBtn" style="display:none;">Switch to Polygon</button>
-      <span id="address" class="pill">Not connected</span>
-    </div>
-
-    <div class="row"><span>Supply</span><strong><span id="supply">—</span>/<span id="max">—</span> (<span id="left">—</span> left)</strong></div>
-    <div class="row"><span>Price</span>
-      <strong>
-        <span id="priceMatic">—</span>
-        <span class="tiny">/ <span id="priceUsd">—</span></span>
-      </strong>
-    </div>
-
-    <!-- Mint panel -->
-    <div class="panel" style="margin-top:12px;">
-      <div class="muted" style="margin-bottom:8px;">Recipient address (single) or multiple (comma, space, or newline-separated)</div>
-      <textarea id="to" rows="3" placeholder="0x... or paste addr1, addr2, addr3..."></textarea>
-
-      <div class="grid" style="margin-top:10px;">
-        <div class="col">
-          <label><input type="checkbox" id="claimNow" checked /> Claim physical now</label>
-          <div class="tiny muted">If enabled, we’ll hash the shipping info below and pass it to <code>mintFor</code>.</div>
+    <nav>
+        <div class="nav-container">
+            <div class="logo">Mazement</div>
+            <ul class="nav-links">
+                <li><a href="#about">About</a></li>
+                <li><a href="#contract">Contract</a></li>
+                <li><a href="https://mint.mazement-nft.com">Mint</a></li>
+                <li><a href="https://discord.gg/SBTSXqnV">Discord</a></li>
+            </ul>
         </div>
-        <div class="col">
-          <label for="shipping">Shipping info (required if claiming)</label>
-          <input id="shipping" type="text" placeholder="Name, email, delivery address..."/>
+    </nav>
+
+    <section class="hero">
+        <div class="hero-content">
+            <div class="hero-text">
+                <h1>Generative Mazes. Physical Redemption.</h1>
+                <p>Mint your Mazement NFT on Ethereum, then redeem a handcrafted physical maze artwork. Where digital precision meets human creativity.</p>
+                <div class="cta-buttons">
+                    <a href="https://mint.mazement-nft.com" class="btn btn-primary">Mint Now</a>
+                    <a href="https://rbyrneart.com/collections/mazes" class="btn btn-secondary">View Physical Art</a>
+                </div>
+            </div>
+            <div class="hero-gallery">
+                <div class="gallery-item">
+                    <img src="images/mazement_0001.jpg" alt="Mazement artwork 1">
+                </div>
+                <div class="gallery-item">
+                    <img src="images/mazement_0002.jpg" alt="Mazement artwork 2">
+                </div>
+                <div class="gallery-item">
+                    <img src="images/mazement_0003.jpg" alt="Mazement artwork 3">
+                </div>
+                <div class="gallery-item">
+                    <img src="images/mazement_0004.jpg" alt="Mazement artwork 4">
+                </div>
+            </div>
         </div>
-      </div>
+    </section>
 
-      <div class="stack" style="margin-top:12px;">
-        <button id="mintMeBtn" disabled>Mint to me</button>
-        <button id="mintBtn" disabled>Mint to address(es)</button>
-      </div>
-      <div class="tiny muted" style="margin-top:6px;">
-        Each mint calls <code>mintFor(to, claimNow, shippingInfoHash)</code> and sends <code>requiredWei()</code> as <code>msg.value</code>.
-      </div>
-    </div>
+    <section id="about" class="section">
+        <div class="section-header">
+            <h2>The Phygital Journey</h2>
+            <p>Where digital meets physical in a unique artistic collaboration</p>
+        </div>
 
-    <p id="status" class="muted" style="min-height:22px; margin-top:14px;"></p>
-    <div id="link" class="links" style="min-height:22px;"></div>
+        <div class="features">
+            <div class="feature-card">
+                <div class="feature-icon">🎨</div>
+                <h3>Generative Art</h3>
+                <p>Each maze is algorithmically generated with unique paths, patterns, and complexity. No two are alike.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🖼️</div>
+                <h3>Physical Redemption</h3>
+                <p>Every NFT comes with a one-time physical redemption. Receive a handcrafted maze artwork by Ricky Byrne.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">👨‍👩‍👦</div>
+                <h3>Family Collaboration</h3>
+                <p>A Byrne family project combining artist Ricky Byrne's craftsmanship with Clinton Byrne's programming expertise.</p>
+            </div>
+        </div>
 
-    <div class="divider"></div>
+        <div class="story-content" style="margin-top: 4rem;">
+            <h3 style="font-size: 2rem; margin-bottom: 1.5rem;">The Story</h3>
+            <p>Mazement bridges the gap between physical and digital art, where each maze represents the human pursuit of goals: love, safety, meaning, adventure.</p>
+            <p>The mazes serve as a metaphor for our very human struggle to find that 'thing' we are working towards — love, wealth, safety, satisfaction, amusement, escapism, adventure, meaning. Our need for goals is universal, our desire to reach them is fundamentally human.</p>
+            <p>It's no surprise the labyrinth and later the maze are persistent features of human culture and history, regardless of where and when we are from. Digital precision meets human imperfection in this unique phygital art collection.</p>
+        </div>
+    </section>
 
-    </main>
-  </div>
+    <section class="section">
+        <div class="section-header">
+            <h2>How It Works</h2>
+            <p>Your journey from digital to physical</p>
+        </div>
 
-  <script defer>
-    // ====== CONTRACT CONFIG ======
-    const RAW_CONTRACT_ADDRESS = "0x20e28b37f331c9d94f1685f5fa1d1fc6d59d69b6"; // your address
-    const ABI = [
-      {"type":"function","name":"totalMinted","stateMutability":"view","inputs":[],"outputs":[{"type":"uint256"}]},
-      {"type":"function","name":"MAX_SUPPLY","stateMutability":"view","inputs":[],"outputs":[{"type":"uint256"}]},
-      {"type":"function","name":"remaining","stateMutability":"view","inputs":[],"outputs":[{"type":"uint256"}]},
-      {"type":"function","name":"owner","stateMutability":"view","inputs":[],"outputs":[{"type":"address"}]},
-      {"type":"function","name":"name","stateMutability":"view","inputs":[],"outputs":[{"type":"string"}]},
-      {"type":"function","name":"symbol","stateMutability":"view","inputs":[],"outputs":[{"type":"string"}]},
-      // Pricing
-      {"type":"function","name":"requiredWei","stateMutability":"view","inputs":[],"outputs":[{"type":"uint256"}]},
-      {"type":"function","name":"mintPriceUsdCents","stateMutability":"view","inputs":[],"outputs":[{"type":"uint256"}]},
-      // Physical / admin
-      {"type":"function","name":"claimOpen","stateMutability":"view","inputs":[],"outputs":[{"type":"bool"}]},
-      {"type":"function","name":"deliveryUpdatesOpen","stateMutability":"view","inputs":[],"outputs":[{"type":"bool"}]},
-      {"type":"function","name":"physicalClaimed","stateMutability":"view","inputs":[{"type":"uint256"}],"outputs":[{"type":"bool"}]},
-      {"type":"function","name":"physicalDelivered","stateMutability":"view","inputs":[{"type":"uint256"}],"outputs":[{"type":"bool"}]},
-      {"type":"function","name":"setDelivered","stateMutability":"nonpayable","inputs":[{"type":"uint256","name":"tokenId"},{"type":"bool","name":"delivered"}],"outputs":[]},
-      // Mint
-      {"type":"function","name":"mintFor","stateMutability":"payable","inputs":[{"name":"to","type":"address"},{"name":"claimNow","type":"bool"},{"name":"shippingInfoHash","type":"bytes32"}],"outputs":[]},
-    ];
+        <div class="story-content">
+            <p>Every Mazement NFT minted comes with the opportunity to redeem a hand-crafted physical maze artwork, created by our collaborator Ricky Byrne.</p>
+            <p>Each design is produced in limited-edition batches of 10. Once a design's run is complete, a new maze is created for the next batch — ensuring continuous artistic evolution.</p>
+            <p><strong>Important:</strong> The physical artwork you receive is not a replica of your NFT, but a unique physical piece within a small-edition series. This fusion of algorithmic and handcrafted creation embodies the true spirit of phygital art.</p>
+            <p>Once the mint window closes, the physical claim can no longer be made by secondary buyers — making this reward exclusive to original minters.</p>
+        </div>
 
-    // --- Email webhook (Google Apps Script Web App URL) ---
-    const EMAIL_WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbz_FeczSgjnUyIKUmi5PinPuyjc9g4bh9lhafeX2Z1r9hK-jeseMPaB9hFGUk4Bp-4eSA/exec";
+        <div class="promo-box">
+            <h3>Wave 1 Launch Promo</h3>
+            <ul>
+                <li><strong>#1–10:</strong> FREE (1 free per wallet)</li>
+                <li><strong>#11–30:</strong> 25% off</li>
+                <li><strong>After #30:</strong> Full price</li>
+            </ul>
+            <div style="margin-top: 2rem;">
+                <a href="https://mint.mazement-nft.com" class="btn btn-primary">Start Minting</a>
+            </div>
+        </div>
+    </section>
 
-    // CORS-friendly email sender
-    async function sendClaimEmail({ wallet, tokenId, txHash, claimNow, shippingText, shippingHash }) {
-      if (!EMAIL_WEBHOOK_URL) { setStatus("Email not configured (EMAIL_WEBHOOK_URL is empty).", "error"); return; }
-      const payload = { wallet, tokenId, txHash, claimNow: !!claimNow, shippingText: shippingText || "", shippingHash: shippingHash || "", timestamp: new Date().toISOString(), schema: "v1" };
-      try {
-        await fetch(EMAIL_WEBHOOK_URL, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(payload) });
-        setStatus("Email sent to the artist. For any enquiries please email claims@rbyrneart.com.", "ok");
-      } catch (e1) {
-        try {
-          await fetch(EMAIL_WEBHOOK_URL, { method: "POST", mode: "no-cors", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(payload) });
-          setStatus("Email sent (no-cors fallback). Check inbox/spam.", "ok");
-        } catch (e2) {
-          console.error("Email webhook failed:", e2);
-          setStatus("Email webhook error: " + (e2.message || String(e2)), "error");
+    <section id="contract" class="section">
+        <div class="section-header">
+            <h2>Smart Contract</h2>
+            <p>Deployed on Ethereum mainnet</p>
+        </div>
+
+        <div class="contract-info">
+            <h3>Contract Address</h3>
+            <div class="contract-address">
+                <span>0xa58bB81b1B3D96dD42e231E3fC49C29Be69F1E11</span>
+                <button class="copy-btn" onclick="copyContract()">Copy</button>
+            </div>
+            <div class="contract-links">
+                <a href="https://opensea.io/collection/mazement" class="btn btn-secondary">View on OpenSea</a>
+                <a href="https://etherscan.io/address/0xa58bB81b1B3D96dD42e231E3fC49C29Be69F1E11" class="btn btn-secondary">View on Etherscan</a>
+            </div>
+            <p style="margin-top: 1.5rem; color: var(--text-secondary);">
+                <strong>Metadata CID:</strong> bafybeib7lfcr3t3iajayuh2cimji5annziwwg2jy27xstu7vztajdsyjfm
+            </p>
+        </div>
+    </section>
+
+    <footer>
+        <p>© Mazement. All rights reserved.</p>
+        <a href="https://discord.gg/SBTSXqnV" class="btn btn-primary" style="margin-top: 1rem;">Join our Discord</a>
+    </footer>
+
+    <script>
+        function copyContract() {
+            const address = '0xa58bB81b1B3D96dD42e231E3fC49C29Be69F1E11';
+            navigator.clipboard.writeText(address).then(() => {
+                const btn = event.target;
+                btn.textContent = 'Copied!';
+                setTimeout(() => {
+                    btn.textContent = 'Copy';
+                }, 2000);
+            });
         }
-      }
-    }
-
-    const POLYGON_CHAIN_ID_HEX = "0x89"; // 137
-    const POLYGON_PARAMS = {
-      chainId: POLYGON_CHAIN_ID_HEX,
-      chainName: "Polygon",
-      nativeCurrency: { name: "MATIC", symbol: "MATIC", decimals: 18 },
-      rpcUrls: ["https://polygon-rpc.com","https://rpc.ankr.com/polygon"],
-      blockExplorerUrls: ["https://polygonscan.com"]
-    };
-
-    // Friendly chain names
-    const CHAIN_NAME = {
-      1:"Ethereum",137:"Polygon",80002:"Polygon Amoy",10:"OP Mainnet",42161:"Arbitrum One",
-      8453:"Base",56:"BNB Smart Chain",43114:"Avalanche C-Chain",324:"zkSync Era",
-      11155111:"Sepolia",5:"Goerli (deprecated)"
-    };
-    const getChainNameFromId = (n,fallback)=> CHAIN_NAME[n] || fallback || `Chain ${n}`;
-
-    const el = id => document.getElementById(id);
-    const linkPolygonscan = (p) => `https://polygonscan.com/${p}`;
-    const setStatus = (msg, cls="muted") => { const s=el("status"); s.className=cls; s.textContent=msg||""; };
-
-    // --- EIP-6963 discovery (Brave/MM) ---
-    const discovered = new Map();
-    window.addEventListener("eip6963:announceProvider", (ev) => { discovered.set(ev.detail.info.uuid, ev.detail); });
-    window.dispatchEvent(new Event("eip6963:requestProvider"));
-    function getAllInjected() {
-      const from6963 = [...discovered.values()].map(d => d && d.provider).filter(Boolean);
-      const eth = window.ethereum;
-      const fromEth = (() => {
-        if (!eth) return [];
-        if (Array.isArray(eth.providers) && eth.providers.length) return eth.providers.filter(Boolean);
-        return [eth];
-      })();
-      const set = new Set([...from6963, ...fromEth]);
-      return [...set];
-    }
-    function pickProvider(kind="auto"){
-      const list = getAllInjected(); if (!list.length) return null;
-      const brave6963 = (() => { for (const d of discovered.values()) if (d.info?.rdns==="com.brave.wallet") return d.provider; return null; })();
-      const brave = brave6963 || list.find(p=>p.isBraveWallet);
-      const metamask = list.find(p=>p.isMetaMask && !p.isBraveWallet);
-      if (kind==="brave") return brave ?? (list.length===1?list[0]:null);
-      if (kind==="metamask") return metamask ?? null;
-      return brave ?? metamask ?? list[0];
-    }
-    function attachProviderEvents(injected){
-      if (!injected || injected.__hasHandlers) return;
-      injected.__hasHandlers = true;
-      injected.on?.("accountsChanged", () => connect(localStorage.getItem("walletPref") || "auto"));
-      injected.on?.("chainChanged",   () => connect(localStorage.getItem("walletPref") || "auto"));
-      injected.on?.("disconnect",     () => { setStatus("Wallet disconnected.", "error"); el("address").textContent="Not connected"; disableMint(true); });
-    }
-
-    let provider, signer, contract, ownerAddr, myAddr, currentInjected = null;
-    let CONTRACT_ADDRESS;
-    let currentPriceWei = 0n; // per mint
-
-    // ===== Helpers =====
-    function normalizeAddress(s){ try { return ethers.getAddress(s.trim()); } catch { return null; } }
-    function parseAddresses(text){
-      return text.split(/[\s,]+/g).map(s=>s.trim()).filter(Boolean).map(normalizeAddress).filter(Boolean);
-    }
-    function formatMatic(wei){ try { return `${ethers.formatEther(wei)} MATIC`; } catch { return `${wei.toString()} wei`; } }
-    function formatUsdCents(c){ try{ const n = BigInt(c); const d = (n/100n).toString(); const r = (n%100n).toString().padStart(2,"0"); return `$${d}.${r}`; } catch { return `$${c}`; } }
-   
-    // Canonical shipping text + dynamic shipping hash based on checkbox
-    function canonicalShippingJson() {
-      const text = el("shipping").value.trim().replace(/\s+/g, " ");
-      return JSON.stringify({ v: "1", text });
-    }
-    function shippingHashOrZero() {
-      const claim = !!el("claimNow").checked;
-      if (!claim) return "0x" + "00".repeat(32);
-      const canonical = canonicalShippingJson();
-      const { text } = JSON.parse(canonical);
-      if (!text) return null; // require shipping when claiming
-      return ethers.id(canonical);
-    }
-
-    function disableMint(disabled){ el("mintBtn").disabled = !!disabled; el("mintMeBtn").disabled = !!disabled; }
-    function updateMintButtonsEnabled(){
-      const isOwner = ownerAddr && myAddr && ownerAddr.toLowerCase() === myAddr.toLowerCase();
-      const ready = !!contract && isOwner;  // don't gate on claim/shipping here
-      el("mintMeBtn").disabled = !ready;
-      el("mintBtn").disabled   = !ready;
-    }
-
-    async function quotePriceWei() {
-      const p = await contract.requiredWei();
-      return BigInt(p.toString());
-    }
-
-    async function connect(kind="auto"){
-      const injected = pickProvider(kind);
-      if (!injected){ setStatus("No wallet detected. In Brave, enable Brave Wallet (brave://settings/wallet).", "error"); return; }
-      currentInjected = injected;
-      attachProviderEvents(injected);
-
-      try{
-        await injected.request({ method:"eth_requestAccounts" });
-        provider = new ethers.BrowserProvider(injected);
-        signer = await provider.getSigner();
-        myAddr = await signer.getAddress();
-        el("address").textContent = `${myAddr.slice(0,6)}…${myAddr.slice(-4)}`;
-
-        try { CONTRACT_ADDRESS = ethers.getAddress(RAW_CONTRACT_ADDRESS); }
-        catch { setStatus("Invalid contract address configured.", "error"); disableMint(true); return; }
-
-        const net = await provider.getNetwork();
-        const cid = Number(net.chainId);
-        const friendly = getChainNameFromId(cid, net.name);
-        el("network").textContent = `${friendly} (${cid})`;
-
-        el("contractLink").textContent = `${CONTRACT_ADDRESS.slice(0,6)}…${CONTRACT_ADDRESS.slice(-4)}`;
-        el("contractLink").href = linkPolygonscan(`address/${CONTRACT_ADDRESS}`);
-
-        if (cid !== 137){
-          el("switchBtn").style.display = "inline-block";
-          setStatus("Wrong network. Click “Switch to Polygon”.", "error");
-          disableMint(true); return;
-        }
-        el("switchBtn").style.display = "none";
-
-        contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, signer);
-
-        // Owner gate
-        ownerAddr = await contract.owner();
-        const isOwner = ownerAddr.toLowerCase() === myAddr.toLowerCase();
-        if (!isOwner){
-          setStatus("This page is owner-only mint. Your wallet is not the owner.", "error");
-          disableMint(true);
-        } else {
-          setStatus("");
-          disableMint(false);
-          if (!el("to").value.trim()) el("to").value = myAddr;
-          await refreshReads();
-          updateMintButtonsEnabled();
-        }
-      }catch(err){
-        console.error(err);
-        setStatus(err?.shortMessage || err?.message || String(err), "error");
-        disableMint(true);
-      }
-    }
-
-    async function switchToPolygon(){
-      const injected = currentInjected || pickProvider("auto");
-      if (!injected) return setStatus("No wallet available to switch.", "error");
-      try{
-        await injected.request({ method:"wallet_switchEthereumChain", params:[{ chainId: POLYGON_CHAIN_ID_HEX }] });
-      }catch(err){
-        if (err && err.code === 4902){
-          await injected.request({ method:"wallet_addEthereumChain", params:[POLYGON_PARAMS] });
-        } else { setStatus(err?.message || "Network switch failed.", "error"); return; }
-      }
-      await connect(localStorage.getItem("walletPref") || "auto");
-    }
-
-    async function refreshReads(){
-      if (!contract) return;
-      try{
-        const [minted, max, remaining, name, symbol, priceWei, priceCents, _claimOpen, _deliveryOpen] = await Promise.all([
-          contract.totalMinted(),
-          contract.MAX_SUPPLY(),
-          contract.remaining(),
-          contract.name(),
-          contract.symbol(),
-          contract.requiredWei(),
-          contract.mintPriceUsdCents(),
-          contract.claimOpen(),
-          contract.deliveryUpdatesOpen()
-        ]);
-        el("supply").textContent = BigInt(minted).toString();
-        el("max").textContent = BigInt(max).toString();
-        el("left").textContent = BigInt(remaining).toString();
-        el("ns").textContent = `${name} / ${symbol}`;
-
-        currentPriceWei = BigInt(priceWei.toString());
-        el("priceMatic").textContent = formatMatic(currentPriceWei);
-        el("priceUsd").textContent = formatUsdCents(priceCents);
-
-      }catch(e){
-        console.warn("read error", e);
-      }
-    }
-
-    async function mintOne(to, claimNow, shippingHash){
-      let price = await quotePriceWei();
-      try {
-        return await contract.mintFor(to, !!claimNow, shippingHash, { value: price });
-      } catch (e) {
-        const msg = (e?.shortMessage || e?.message || "").toLowerCase();
-        const needRetry =
-          msg.includes("incorrect eth") ||
-          msg.includes("invalid msg.value") ||
-          msg.includes("insufficient") ||
-          msg.includes("price") ||
-          e?.reason === "Incorrect ETH.";
-    
-        if (!needRetry) throw e;
-    
-        price = await quotePriceWei();
-        return await contract.mintFor(to, !!claimNow, shippingHash, { value: price });
-      }
-    }
-
-    async function mintToMe(){
-      if (!contract || !myAddr) return;
-
-      const claimNow = !!el("claimNow").checked;
-      const shippingHash = shippingHashOrZero();
-      if (claimNow && !shippingHash) {
-        setStatus("Please enter shipping info (required when claiming).", "error"); return;
-      }
-
-      try{
-        const me = normalizeAddress(myAddr); if (!me) return setStatus("Invalid sender address.", "error");
-        setStatus("Sending tx…");
-        disableMint(true);
-        const tx = await mintOne(me, claimNow, shippingHash);
-        setStatus("Mining…");
-        const receipt = await tx.wait();
-        setStatus("✅ Confirmed", "ok");
-
-        const shippingText = claimNow ? canonicalShippingJson() : "";
-        await sendClaimEmail({
-          wallet: myAddr,
-          tokenId: "(unknown)",
-          txHash: receipt.hash,
-          claimNow,
-          shippingText,
-          shippingHash
-        });
-
-        const a = document.createElement("a");
-        a.href = linkPolygonscan(`tx/${receipt.hash}`); a.target = "_blank"; a.rel = "noreferrer"; a.textContent = `Tx: ${receipt.hash.slice(0,10)}…`;
-        el("link").prepend(a);
-        await refreshReads();
-      } catch (err) {
-      console.error(err);
-        const m = (err?.shortMessage || err?.message || "").toLowerCase();
-        if (err?.code === 4001) setStatus("User rejected the transaction.", "error");
-        else if (m.includes("incorrect eth") || m.includes("invalid msg.value"))
-          setStatus("Price updated just now—please try again (we’ll auto-requote).", "error");
-        else if (m.includes("insufficient funds"))
-          setStatus("Insufficient funds for price + gas.", "error");
-        else
-          setStatus("❌ " + (err?.shortMessage || err?.message || String(err)), "error");
-      } finally {
-        disableMint(false);
-      }
-    }
-
-    async function mintTo(){
-      if (!contract) return;
-      const list = parseAddresses(el("to").value);
-      if (!list.length) return setStatus("Enter at least one valid recipient address.", "error");
-
-      const claimNow = !!el("claimNow").checked;
-      if (claimNow && list.length > 1){
-        return setStatus("Claim-now is per recipient. Mint to one address at a time.", "error");
-      }
-
-      const shippingHash = shippingHashOrZero();
-      if (claimNow && !shippingHash) {
-        return setStatus("Please enter shipping info (required when claiming).", "error");
-      }
-
-      try{
-        disableMint(true);
-        let i = 0;
-        for (const addr of list){
-          setStatus(`Sending tx ${i+1}/${list.length}…`);
-          const tx = await mintOne(addr, claimNow, shippingHash);
-          setStatus(`Mining ${i+1}/${list.length}…`);
-          const receipt = await tx.wait();
-
-          const shippingText = claimNow ? canonicalShippingJson() : "";
-          await sendClaimEmail({
-            wallet: addr,
-            tokenId: "(unknown)",
-            txHash: receipt.hash,
-            claimNow,
-            shippingText,
-            shippingHash
-          });
-
-          const a = document.createElement("a");
-          a.href = linkPolygonscan(`tx/${receipt.hash}`); a.target = "_blank"; a.rel = "noreferrer"; a.textContent = `Tx ${i+1}: ${receipt.hash.slice(0,10)}…`;
-          el("link").prepend(a);
-          i++;
-        }
-        setStatus("✅ All mints confirmed", "ok");
-        await refreshReads();
-      } catch (err) {
-        console.error(err);
-        const m = (err?.shortMessage || err?.message || "").toLowerCase();
-        if (err?.code === 4001) setStatus("User rejected the transaction.", "error");
-        else if (m.includes("incorrect eth") || m.includes("invalid msg.value"))
-          setStatus("Price updated just now—please try again (we’ll auto-requote).", "error");
-        else if (m.includes("insufficient funds"))
-          setStatus("Insufficient funds for price + gas.", "error");
-        else
-          setStatus("❌ " + (err?.shortMessage || err?.message || String(err)), "error");
-      } finally {
-        disableMint(false);
-      }
-    }
-
-    // Wire buttons + remember preference
-    const remember = (k) => { try { localStorage.setItem("walletPref", k); } catch {} };
-    document.getElementById("connectAuto").addEventListener("click", () => { remember("auto"); connect("auto"); });
-    document.getElementById("connectBrave").addEventListener("click", () => { remember("brave"); connect("brave"); });
-    document.getElementById("connectMM").addEventListener("click", () => { remember("metamask"); connect("metamask"); });
-    document.getElementById("switchBtn").addEventListener("click", switchToPolygon);
-    document.getElementById("mintMeBtn").addEventListener("click", mintToMe);
-    document.getElementById("mintBtn").addEventListener("click", mintTo);
-
-    // Legacy direct connect (fallback)
-    document.getElementById("connectLegacy").addEventListener("click", async () => {
-      try {
-        const eth = window.ethereum;
-        if (!eth) { setStatus("No window.ethereum found.", "error"); return; }
-        await eth.request({ method: "eth_requestAccounts" });
-        provider = new ethers.BrowserProvider(eth);
-        signer = await provider.getSigner();
-        myAddr = await signer.getAddress();
-        el("address").textContent = `${myAddr.slice(0,6)}…${myAddr.slice(-4)}`;
-
-        const net = await provider.getNetwork();
-        const cid = Number(net.chainId);
-        const friendly = getChainNameFromId(cid, net.name);
-        el("network").textContent = `${friendly} (${cid})`;
-
-        if (cid !== 137) {
-          el("switchBtn").style.display = "inline-block";
-          setStatus("Wrong network. Click “Switch to Polygon”.", "error");
-          disableMint(true); return;
-        }
-        el("switchBtn").style.display = "none";
-
-        CONTRACT_ADDRESS = ethers.getAddress(RAW_CONTRACT_ADDRESS);
-        contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, signer);
-
-        ownerAddr = await contract.owner();
-        const isOwner = ownerAddr.toLowerCase() === myAddr.toLowerCase();
-        if (!isOwner){ setStatus("This page is owner-only mint. Your wallet is not the owner.", "error"); disableMint(true); }
-        else { setStatus(""); if (!el("to").value.trim()) el("to").value = myAddr; await refreshReads(); updateMintButtonsEnabled(); }
-      } catch (err) {
-        console.error(err);
-        setStatus(err?.shortMessage || err?.message || String(err), "error");
-      }
-    });
-
-    // Test Email (uses your current shipping field)
-    document.getElementById("testEmail").addEventListener("click", async () => {
-      const claim = !!el("claimNow").checked;
-      const text = (el("shipping").value || "").trim();
-      if (claim && !text) { setStatus("Enter shipping info first to test email (claim is on).", "error"); return; }
-      const canonical = claim ? JSON.stringify({ v: "1", text: text.replace(/\s+/g, " ") }) : "";
-      const hash = claim ? ethers.id(canonical) : ("0x" + "00".repeat(32));
-      await sendClaimEmail({
-        wallet: myAddr || "0xTEST",
-        tokenId: "TEST",
-        txHash: "0xdeadbeef",
-        claimNow: claim,
-        shippingText: canonical,
-        shippingHash: hash
-      });
-    });
-
-    // Auto-connect to last chosen wallet
-    (function autoConnect() {
-      const last = (() => { try { return localStorage.getItem("walletPref") } catch { return null } })();
-      setTimeout(() => {
-        const hasProviders = getAllInjected().length || discovered.size;
-        if (hasProviders && last) connect(last);
-        else updateMintButtonsEnabled();
-      }, 200);
-    })();
-  </script>
+    </script>
 </body>
 </html>
 
