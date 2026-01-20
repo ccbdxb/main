@@ -426,10 +426,6 @@
             .gallery-grid {
                 grid-template-columns: repeat(3, 1fr);
             }
-
-            .lightbox-prev, .lightbox-next {
-                display: none;
-            }
         }
 
         @media (max-width: 768px) {
@@ -513,13 +509,13 @@
     </section>
 
     <!-- Lightbox -->
-    <div class="lightbox" id="lightbox" onclick="closeLightbox()">
+    <div class="lightbox" id="lightbox">
         <button class="lightbox-close" onclick="closeLightbox()">×</button>
-        <button class="lightbox-nav lightbox-prev" onclick="event.stopPropagation(); changeLightboxImage(-1)">‹</button>
-        <div class="lightbox-content" onclick="event.stopPropagation()">
+        <button class="lightbox-nav lightbox-prev" onclick="changeLightboxImage(-1)">‹</button>
+        <button class="lightbox-nav lightbox-next" onclick="changeLightboxImage(1)">›</button>
+        <div class="lightbox-content">
             <img class="lightbox-image" id="lightboxImage" src="" alt="">
         </div>
-        <button class="lightbox-nav lightbox-next" onclick="event.stopPropagation(); changeLightboxImage(1)">›</button>
     </div>
 
     <section id="about" class="section">
@@ -636,13 +632,15 @@
             document.body.style.overflow = 'hidden';
         }
 
-        function closeLightbox() {
+        function closeLightbox(e) {
+            if (e) e.stopPropagation();
             const lightbox = document.getElementById('lightbox');
             lightbox.classList.remove('active');
             document.body.style.overflow = 'auto';
         }
 
         function changeLightboxImage(direction) {
+            event.stopPropagation();
             currentLightboxIndex += direction;
             if (currentLightboxIndex < 0) currentLightboxIndex = images.length - 1;
             if (currentLightboxIndex >= images.length) currentLightboxIndex = 0;
@@ -650,6 +648,13 @@
             const lightboxImage = document.getElementById('lightboxImage');
             lightboxImage.src = images[currentLightboxIndex];
         }
+
+        // Close lightbox when clicking on the background
+        document.getElementById('lightbox').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeLightbox();
+            }
+        });
 
         // Keyboard navigation for lightbox
         document.addEventListener('keydown', (e) => {
