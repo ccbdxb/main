@@ -423,12 +423,12 @@
                 gap: 2rem;
             }
 
-            .carousel-prev {
-                left: 1rem;
+            .gallery-grid {
+                grid-template-columns: repeat(3, 1fr);
             }
 
-            .carousel-next {
-                right: 1rem;
+            .lightbox-prev, .lightbox-next {
+                display: none;
             }
         }
 
@@ -489,33 +489,38 @@
         <a href="https://rbyrneart.com/collections/mazes" class="cta cta-secondary">View Physical Art</a>
     </section>
 
-    <section class="carousel">
-        <div class="carousel-container">
-            <div class="carousel-track" id="carouselTrack">
-                <div class="carousel-slide">
-                    <img src="images/mazement_0001.png" alt="Mazement 1">
-                </div>
-                <div class="carousel-slide">
-                    <img src="images/mazement_0002.png" alt="Mazement 2">
-                </div>
-                <div class="carousel-slide">
-                    <img src="images/mazement_0003.png" alt="Mazement 3">
-                </div>
-                <div class="carousel-slide">
-                    <img src="images/mazement_0004.png" alt="Mazement 4">
-                </div>
-                <div class="carousel-slide">
-                    <img src="images/mazement_0005.png" alt="Mazement 5">
-                </div>
-                <div class="carousel-slide">
-                    <img src="images/mazement_0006.png" alt="Mazement 6">
-                </div>
+    <section class="gallery">
+        <div class="gallery-grid">
+            <div class="gallery-item" onclick="openLightbox(0)">
+                <img src="images/mazement_0001.png" alt="Mazement 1">
             </div>
-            <div class="carousel-nav carousel-prev" onclick="moveCarousel(-1)">‹</div>
-            <div class="carousel-nav carousel-next" onclick="moveCarousel(1)">›</div>
+            <div class="gallery-item" onclick="openLightbox(1)">
+                <img src="images/mazement_0002.png" alt="Mazement 2">
+            </div>
+            <div class="gallery-item" onclick="openLightbox(2)">
+                <img src="images/mazement_0003.png" alt="Mazement 3">
+            </div>
+            <div class="gallery-item" onclick="openLightbox(3)">
+                <img src="images/mazement_0004.png" alt="Mazement 4">
+            </div>
+            <div class="gallery-item" onclick="openLightbox(4)">
+                <img src="images/mazement_0005.png" alt="Mazement 5">
+            </div>
+            <div class="gallery-item" onclick="openLightbox(5)">
+                <img src="images/mazement_0006.png" alt="Mazement 6">
+            </div>
         </div>
-        <div class="carousel-dots" id="carouselDots"></div>
     </section>
+
+    <!-- Lightbox -->
+    <div class="lightbox" id="lightbox" onclick="closeLightbox()">
+        <button class="lightbox-close" onclick="closeLightbox()">×</button>
+        <button class="lightbox-nav lightbox-prev" onclick="event.stopPropagation(); changeLightboxImage(-1)">‹</button>
+        <div class="lightbox-content" onclick="event.stopPropagation()">
+            <img class="lightbox-image" id="lightboxImage" src="" alt="">
+        </div>
+        <button class="lightbox-nav lightbox-next" onclick="event.stopPropagation(); changeLightboxImage(1)">›</button>
+    </div>
 
     <section id="about" class="section">
         <div class="section-header">Overview</div>
@@ -590,13 +595,13 @@
                     <td class="token-id">#1</td>
                     <td><a href="https://ipfs.io/ipfs/bafybeib7lfcr3t3iajayuh2cimji5annziwwg2jy27xstu7vztajdsyjfm/1" target="_blank">ipfs://...jfm/1</a></td>
                     <td><a href="https://ipfs.io/ipfs/..." target="_blank">View</a></td>
-                    <td><img src="images/mazement_0001.jpg" alt="NFT 1" class="nft-preview"></td>
+                    <td><img src="images/mazement_0001.png" alt="Mazement 1" class="nft-preview"></td>
                 </tr>
                 <tr>
                     <td class="token-id">#2</td>
                     <td><a href="https://ipfs.io/ipfs/bafybeib7lfcr3t3iajayuh2cimji5annziwwg2jy27xstu7vztajdsyjfm/2" target="_blank">ipfs://...jfm/2</a></td>
                     <td><a href="https://ipfs.io/ipfs/..." target="_blank">View</a></td>
-                    <td><img src="images/mazement_0002.jpg" alt="NFT 2" class="nft-preview"></td>
+                    <td><img src="images/mazement_0002.png" alt="Mazement 2" class="nft-preview"></td>
                 </tr>
                 <!-- Add more rows as needed -->
             </tbody>
@@ -611,57 +616,49 @@
     </footer>
 
     <script>
-        // Carousel functionality
-        let currentSlide = 0;
-        const totalSlides = 6; // Number of slides
-        
-        function initCarousel() {
-            const track = document.getElementById('carouselTrack');
-            const dotsContainer = document.getElementById('carouselDots');
+        // Lightbox functionality
+        let currentLightboxIndex = 0;
+        const images = [
+            'images/mazement_0001.png',
+            'images/mazement_0002.png',
+            'images/mazement_0003.png',
+            'images/mazement_0004.png',
+            'images/mazement_0005.png',
+            'images/mazement_0006.png'
+        ];
 
-            // Create dots
-            for (let i = 0; i < totalSlides; i++) {
-                const dot = document.createElement('div');
-                dot.className = 'carousel-dot';
-                if (i === 0) dot.classList.add('active');
-                dot.onclick = () => goToSlide(i);
-                dotsContainer.appendChild(dot);
+        function openLightbox(index) {
+            currentLightboxIndex = index;
+            const lightbox = document.getElementById('lightbox');
+            const lightboxImage = document.getElementById('lightboxImage');
+            lightboxImage.src = images[index];
+            lightbox.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeLightbox() {
+            const lightbox = document.getElementById('lightbox');
+            lightbox.classList.remove('active');
+            document.body.style.overflow = 'auto';
+        }
+
+        function changeLightboxImage(direction) {
+            currentLightboxIndex += direction;
+            if (currentLightboxIndex < 0) currentLightboxIndex = images.length - 1;
+            if (currentLightboxIndex >= images.length) currentLightboxIndex = 0;
+            
+            const lightboxImage = document.getElementById('lightboxImage');
+            lightboxImage.src = images[currentLightboxIndex];
+        }
+
+        // Keyboard navigation for lightbox
+        document.addEventListener('keydown', (e) => {
+            const lightbox = document.getElementById('lightbox');
+            if (lightbox.classList.contains('active')) {
+                if (e.key === 'Escape') closeLightbox();
+                if (e.key === 'ArrowLeft') changeLightboxImage(-1);
+                if (e.key === 'ArrowRight') changeLightboxImage(1);
             }
-            
-            // Initialize first slide
-            updateCarousel();
-        }
-
-        function updateCarousel() {
-            const track = document.getElementById('carouselTrack');
-            track.style.transform = `translateX(-${currentSlide * 100}%)`;
-            
-            // Update dots
-            document.querySelectorAll('.carousel-dot').forEach((dot, index) => {
-                dot.classList.toggle('active', index === currentSlide);
-            });
-        }
-
-        function moveCarousel(direction) {
-            currentSlide += direction;
-            if (currentSlide < 0) currentSlide = totalSlides - 1;
-            if (currentSlide >= totalSlides) currentSlide = 0;
-            updateCarousel();
-        }
-
-        function goToSlide(index) {
-            currentSlide = index;
-            updateCarousel();
-        }
-
-        // Initialize on page load
-        window.addEventListener('DOMContentLoaded', () => {
-            initCarousel();
-            
-            // Auto-advance carousel every 4 seconds
-            setInterval(() => {
-                moveCarousel(1);
-            }, 4000);
         });
 
         // Contract copy function
