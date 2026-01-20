@@ -487,36 +487,26 @@
 
     <section class="gallery">
         <div class="gallery-grid">
-            <div class="gallery-item" onclick="openLightbox(0)">
+            <div class="gallery-item">
                 <img src="images/mazement_0001.png" alt="Mazement 1">
             </div>
-            <div class="gallery-item" onclick="openLightbox(1)">
+            <div class="gallery-item">
                 <img src="images/mazement_0002.png" alt="Mazement 2">
             </div>
-            <div class="gallery-item" onclick="openLightbox(2)">
+            <div class="gallery-item">
                 <img src="images/mazement_0003.png" alt="Mazement 3">
             </div>
-            <div class="gallery-item" onclick="openLightbox(3)">
+            <div class="gallery-item">
                 <img src="images/mazement_0004.png" alt="Mazement 4">
             </div>
-            <div class="gallery-item" onclick="openLightbox(4)">
+            <div class="gallery-item">
                 <img src="images/mazement_0005.png" alt="Mazement 5">
             </div>
-            <div class="gallery-item" onclick="openLightbox(5)">
+            <div class="gallery-item">
                 <img src="images/mazement_0006.png" alt="Mazement 6">
             </div>
         </div>
     </section>
-
-    <!-- Lightbox -->
-    <div class="lightbox" id="lightbox">
-        <button class="lightbox-close" onclick="closeLightbox()">×</button>
-        <button class="lightbox-nav lightbox-prev" onclick="changeLightboxImage(-1)">‹</button>
-        <button class="lightbox-nav lightbox-next" onclick="changeLightboxImage(1)">›</button>
-        <div class="lightbox-content">
-            <img class="lightbox-image" id="lightboxImage" src="" alt="">
-        </div>
-    </div>
 
     <section id="about" class="section">
         <div class="section-header">Overview</div>
@@ -612,60 +602,6 @@
     </footer>
 
     <script>
-        // Lightbox functionality
-        let currentLightboxIndex = 0;
-        const images = [
-            'images/mazement_0001.png',
-            'images/mazement_0002.png',
-            'images/mazement_0003.png',
-            'images/mazement_0004.png',
-            'images/mazement_0005.png',
-            'images/mazement_0006.png'
-        ];
-
-        function openLightbox(index) {
-            currentLightboxIndex = index;
-            const lightbox = document.getElementById('lightbox');
-            const lightboxImage = document.getElementById('lightboxImage');
-            lightboxImage.src = images[index];
-            lightbox.classList.add('active');
-            document.body.style.overflow = 'hidden';
-        }
-
-        function closeLightbox(e) {
-            if (e) e.stopPropagation();
-            const lightbox = document.getElementById('lightbox');
-            lightbox.classList.remove('active');
-            document.body.style.overflow = 'auto';
-        }
-
-        function changeLightboxImage(direction) {
-            event.stopPropagation();
-            currentLightboxIndex += direction;
-            if (currentLightboxIndex < 0) currentLightboxIndex = images.length - 1;
-            if (currentLightboxIndex >= images.length) currentLightboxIndex = 0;
-            
-            const lightboxImage = document.getElementById('lightboxImage');
-            lightboxImage.src = images[currentLightboxIndex];
-        }
-
-        // Close lightbox when clicking on the background
-        document.getElementById('lightbox').addEventListener('click', function(e) {
-            if (e.target === this) {
-                closeLightbox();
-            }
-        });
-
-        // Keyboard navigation for lightbox
-        document.addEventListener('keydown', (e) => {
-            const lightbox = document.getElementById('lightbox');
-            if (lightbox.classList.contains('active')) {
-                if (e.key === 'Escape') closeLightbox();
-                if (e.key === 'ArrowLeft') changeLightboxImage(-1);
-                if (e.key === 'ArrowRight') changeLightboxImage(1);
-            }
-        });
-
         // Contract copy function
         function copyContract() {
             const address = '0xa58bB81b1B3D96dD42e231E3fC49C29Be69F1E11';
