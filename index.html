@@ -187,8 +187,8 @@
 
     /* ── Mint form ── */
     .mint-form {
-      padding: 24px; border-radius: 16px 16px 0 0;
-      border: 1px solid var(--border2); border-bottom: none; background: var(--surface);
+      padding: 24px; border-radius: 16px;
+      border: 1px solid var(--border2); background: var(--surface);
     }
     .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
     .form-group { display: flex; flex-direction: column; gap: 8px; }
@@ -410,16 +410,16 @@
 
         <button class="btn-primary" id="mintMeBtn" disabled>Mint to My Wallet</button>
         <div class="hint" style="margin-top:10px;">Each mint uses the current quoted price. The exact <code style="font-family:Space Mono,monospace;font-size:0.75rem">msg.value</code> is sent automatically.</div>
+      </div>
 
-        <!-- Status -->
-        <div class="status-area" style="margin-top:14px;">
-          <p id="status" class="muted" style="min-height:22px;"></p>
-          <div id="link" style="min-height:22px;"></div>
-        </div>
+      <!-- Status -->
+      <div class="status-area">
+        <p id="status" class="muted" style="min-height:22px;"></p>
+        <div id="link" style="min-height:22px;"></div>
       </div>
 
       <!-- Rules -->
-      <div class="rules-box" style="margin-top:0; border-top:none; border-radius: 0 0 16px 16px;">
+      <div class="rules-box">
         <p class="rules-title">How This Drop Works</p>
         <ul class="rules-list">
           <li>
