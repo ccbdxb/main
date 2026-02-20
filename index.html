@@ -390,7 +390,7 @@
         <div class="form-group" style="margin-bottom:18px;">
           <label for="shipping-email">Email address <span style="color:var(--err)">*</span></label>
           <input id="shipping-email" type="text" placeholder="you@example.com"/>
-          <div class="hint">We'll use this to coordinate your physical artwork delivery.</div>
+          <div id="email-validation" class="hint" style="min-height:16px;"></div>
         </div>
 
         <div class="form-group" style="margin-bottom:18px;">
@@ -655,9 +655,45 @@
       } catch {}
       return "unknown";
     }
+    function isValidEmail(email) {
+      // Must have exactly one @, with non-empty local and domain parts, and domain must have a dot
+      const parts = email.split("@");
+      if (parts.length !== 2) return false;
+      const [local, domain] = parts;
+      if (!local || !domain) return false;
+      if (!domain.includes(".")) return false;
+      const domainParts = domain.split(".");
+      if (domainParts.some(p => p.length === 0)) return false;
+      return true;
+    }
+
+    function validateEmailField() {
+      const emailEl = el("shipping-email");
+      const feedbackEl = el("email-validation");
+      const val = (emailEl?.value || "").trim();
+      if (!val) {
+        feedbackEl.textContent = "We'll use this to coordinate your physical artwork delivery.";
+        feedbackEl.style.color = "var(--muted)";
+        emailEl.style.borderColor = "";
+        return false;
+      }
+      if (isValidEmail(val)) {
+        feedbackEl.textContent = "✓ Looks good";
+        feedbackEl.style.color = "var(--ok)";
+        emailEl.style.borderColor = "var(--ok)";
+        return true;
+      } else {
+        feedbackEl.textContent = "Please enter a valid email address (e.g. you@example.com)";
+        feedbackEl.style.color = "var(--err)";
+        emailEl.style.borderColor = "var(--err)";
+        return false;
+      }
+    }
+
     function shippingHashOrZero() {
       const email = (el("shipping-email")?.value || "").trim();
       if (!email) return null;
+      if (!isValidEmail(email)) return null;
       const canonical = canonicalShippingJson();
       return ethers.id(canonical);
     }
@@ -833,7 +869,7 @@
     async function mintToMe(){
       if (!contract || !myAddr) return;
       const shippingHash = shippingHashOrZero();
-      if (!shippingHash) { setStatus("Please enter your email address before minting.", "error"); return; }
+      if (!shippingHash) { setStatus("Please enter a valid email address before minting.", "error"); return; }
       try {
         const me = normalizeAddress(myAddr); if (!me) return setStatus("Invalid sender address.", "error");
         setStatus("Sending tx…");
@@ -858,6 +894,10 @@
         else setStatus("❌ " + (err?.shortMessage || err?.message || String(err)), "error");
       } finally { disableMint(false); }
     }
+
+    document.getElementById("shipping-email").addEventListener("input", validateEmailField);
+    // Show default hint on load
+    validateEmailField();
 
     // Wire buttons
     const remember = (k) => { try { localStorage.setItem("walletPref", k); } catch {} };
