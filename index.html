@@ -680,61 +680,85 @@
     async function refreshReads(){
       if (!contract) return;
       try {
-        const addr = myAddr || ethers.ZeroAddress;
-        const [mintedBN, maxSupplyBN, saleOpen, waveIdxBN, waveSizeBN, leftWaveBN, priceWeiArr, releaseCap] = await Promise.all([
-          contract.totalMinted().catch(()=>null),
-          contract.MAX_SUPPLY().catch(()=>null),
-          contract.saleActive().catch(()=>false),
-          contract.waveId().catch(()=>null),
-          contract.WAVE_SIZE().catch(()=>null),
-          contract.remainingInWave().catch(()=>null),
-          contract.quoteNextMintPriceWeiFor(addr).catch(()=>null),
-          contract.releaseCap().catch(()=>null),
+        const [
+          totalMinted,
+          remainingWave,
+          name,
+          symbol,
+          basePriceWei,
+          priceUsd18,
+          saleOpen,
+          waveId,
+          waveSize,
+          releaseCap
+        ] = await Promise.all([
+          contract.totalMinted(),
+          contract.remainingInWave(),
+          contract.name(),
+          contract.symbol(),
+          contract.currentMintPriceWei(),
+          contract.usdMintPrice(),
+          contract.saleActive(),
+          contract.waveId(),
+          contract.WAVE_SIZE(),
+          contract.releaseCap()
         ]);
 
-        // priceWeiArr = [priceWei, tier]  tier: 0=full, 1=free, 2=discount
-        const priceWei = priceWeiArr?.[0] ?? null;
-        const tier     = priceWeiArr?.[1] ?? null;
+        // Try MAX_SUPPLY — tolerate if absent
+        let maxSupplyBN = null;
+        try { const ms = await contract.MAX_SUPPLY(); maxSupplyBN = BigInt(ms.toString()); } catch {}
 
-        // Show ETH price, but if tier is free override to FREE
-        const priceEl = el("priceMatic");
-        if (priceEl) {
-          if (tier !== null && Number(tier) === 1) {
-            priceEl.textContent = "FREE";
-          } else {
-            priceEl.textContent = priceWei !== null ? formatEth(priceWei) : "—";
+        // Labels
+        const nsEl = el("ns"); if (nsEl) nsEl.textContent = `${name} / ${symbol}`;
+
+        // ===== Price: prefer wallet-quoted; fall back to base =====
+        let displayPriceWei = BigInt(basePriceWei.toString());
+        try {
+          if (myAddr) {
+            const quote = await contract.quoteNextMintPriceWeiFor(myAddr);
+            const quotedWei = quote?.priceWei ?? quote?.[0];
+            if (quotedWei != null) displayPriceWei = BigInt(quotedWei.toString());
           }
+        } catch {}
+
+        function usdForQuotedWei(baseUsd18, baseWei, quotedWei) {
+          try {
+            const bUsd = BigInt(baseUsd18.toString());
+            const bWei = BigInt(baseWei.toString());
+            const qWei = BigInt(quotedWei.toString());
+            if (qWei === 0n) return "$0.00";
+            if (bWei === 0n) return "—";
+            return formatUsd18((bUsd * qWei) / bWei);
+          } catch { return "—"; }
         }
 
-        // Show USD equivalent, suppressed when free
-        const usdEl = el("priceUsd");
-        if (usdEl) {
-          if (tier !== null && Number(tier) === 1) {
-            usdEl.textContent = "";
-          } else if (priceWei !== null) {
-            // derive USD from the quoted ETH price using a rough on-chain rate if available
-            usdEl.textContent = "";  // leave blank — ETH price is the source of truth
-          } else {
-            usdEl.textContent = "—";
-          }
+        const priceEthEl = el("priceMatic");
+        const priceUsdEl = el("priceUsd");
+        if (displayPriceWei === 0n) {
+          if (priceEthEl) priceEthEl.textContent = "FREE";
+          if (priceUsdEl) priceUsdEl.textContent = "$0.00";
+        } else {
+          if (priceEthEl) priceEthEl.textContent = formatEth(displayPriceWei);
+          if (priceUsdEl) priceUsdEl.textContent = usdForQuotedWei(priceUsd18, basePriceWei, displayPriceWei);
         }
 
-        // Wave: waveId is 0-based on contract, display as 1-based
-        // Total waves = releaseCap tells us how many slots this wave has, not the total wave count
-        // Read totalWaves from MAX_SUPPLY / WAVE_SIZE if available
-        let totalWaves = "?";
-        if (maxSupplyBN !== null && waveSizeBN !== null && waveSizeBN > 0n) {
-          totalWaves = (maxSupplyBN / waveSizeBN).toString();
+        // ===== Wave info =====
+        const waveSizeBN = BigInt(waveSize.toString());
+        const leftWaveBN = BigInt(remainingWave.toString());
+        let totalWavesText = "—";
+        if (maxSupplyBN !== null && waveSizeBN > 0n) {
+          const totalWavesBN = (maxSupplyBN + waveSizeBN - 1n) / waveSizeBN; // ceiling div
+          totalWavesText = totalWavesBN.toString();
         }
-        const waveIdxHuman = waveIdxBN !== null ? (Number(waveIdxBN) + 1).toString() : "—";
+        const waveIdxHuman = Number(waveId); // already 1-based from contract
 
-        if (el("waveIdx"))        el("waveIdx").textContent        = waveIdxHuman;
-        if (el("waveTotalCount")) el("waveTotalCount").textContent = totalWaves;
-        if (el("waveLeft"))       el("waveLeft").textContent       = leftWaveBN !== null ? leftWaveBN.toString() : "—";
-        if (el("waveSize"))       el("waveSize").textContent       = waveSizeBN !== null ? waveSizeBN.toString() : "—";
-        if (el("supply"))         el("supply").textContent         = mintedBN !== null ? mintedBN.toString() : "—";
+        if (el("waveIdx"))        el("waveIdx").textContent        = String(waveIdxHuman);
+        if (el("waveTotalCount")) el("waveTotalCount").textContent = totalWavesText;
+        if (el("waveLeft"))       el("waveLeft").textContent       = leftWaveBN.toString();
+        if (el("waveSize"))       el("waveSize").textContent       = waveSizeBN.toString();
+        if (el("supply"))         el("supply").textContent         = totalMinted.toString();
         if (el("max"))            el("max").textContent            = maxSupplyBN !== null ? maxSupplyBN.toString() : "—";
-        if (el("left"))           el("left").textContent           = leftWaveBN !== null ? leftWaveBN.toString() : "—";
+        if (el("left"))           el("left").textContent           = leftWaveBN.toString();
 
         if (!saleOpen) { setStatus("Sale is not active yet.", "error"); disableMint(true); }
         else { disableMint(false); }
