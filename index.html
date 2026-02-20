@@ -2,150 +2,535 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>Mazement Test Minting</title>
+  <title>Mazement — Test Mint</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700;9..40,800&display=swap" rel="stylesheet">
   <style>
-    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin:0; background:#0b0c10; color:#eaf5ff; }
-    .wrap { max-width: 1500px; margin: 40px auto; padding: 24px; background:#11141a; border:1px solid #222936; border-radius:16px; }
-    h1 { margin:0 0 8px; }
-    .row { display:flex; justify-content:space-between; padding:10px 12px; background:#0e1218; border:1px solid #1d2431; border-radius:10px; margin-top:10px; }
-    .stack{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
-    .col{ display:flex; flex-direction:column; gap:8px; }
-    .grid{ display:grid; gap:10px; grid-template-columns: 1fr 1fr; }
-    button{ cursor:pointer; padding:10px 14px; border-radius:10px; border:1px solid #2a3344; background:#1f2837; color:#eaf5ff; }
-    button[disabled]{ opacity:.6; cursor:not-allowed; }
-    input[type=text], input[type=number], textarea{
-      width:100%; padding:10px 12px; border-radius:10px; border:1px solid #2a3344; background:#0e1218; color:#eaf5ff;
-    }
-    label{ font-size:14px; opacity:.9 }
-    a{ color:#8ab4ff; }
-    .muted{ opacity:.8 }
-    .error{ color:#ff6b6b }
-    .ok{ color:#6bff95 }
-    .pill{ font-size:12px; padding:4px 8px; border-radius:999px; background:#1b2230; border:1px solid #2a3344; }
-    .kvs{ display:flex; gap:12px; align-items:center; flex-wrap:wrap}
-    .kvs span{ font-size:12px; opacity:.9; }
-    .panel{ padding:12px; border:1px solid #1d2431; border-radius:12px; background:#0e1218; }
-    .divider{ height:1px; background:#1d2431; margin:14px 0; }
-    .tiny{ font-size:12px; opacity:.85 }
-    .links a{ display:block; }
-    .layout{display:grid;grid-template-columns:minmax(240px,340px) 1fr;gap:24px;align-items:start}
-    .art{background:#fff;border:1px solid #1d2431;border-radius:12px;padding:10px}
-    .art img{display:block;width:100%;height:auto}
-    .caption{font-size:12px;opacity:.8;margin-top:8px;text-align:center;color:#000;}
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-    /* Responsive: stack on narrow screens */
+    :root {
+      --bg:       #080a0f;
+      --surface:  #0d1018;
+      --surface2: #111520;
+      --border:   rgba(255,255,255,0.07);
+      --border2:  rgba(255,255,255,0.12);
+      --text:     #e8edf5;
+      --muted:    #6b7a96;
+      --accent:   #00e5ff;
+      --accent2:  #7b61ff;
+      --gold:     #f5c842;
+      --ok:       #22c55e;
+      --err:      #ef4444;
+    }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background-image:
+        linear-gradient(rgba(0,229,255,0.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,229,255,0.025) 1px, transparent 1px);
+      background-size: 48px 48px;
+      pointer-events: none; z-index: 0;
+    }
+
+    .glow-top {
+      position: fixed; top: -200px; left: -200px;
+      width: 600px; height: 600px;
+      background: radial-gradient(circle, rgba(0,229,255,0.06) 0%, transparent 70%);
+      pointer-events: none; z-index: 0;
+    }
+    .glow-mid {
+      position: fixed; top: 40%; right: -150px;
+      width: 500px; height: 500px;
+      background: radial-gradient(circle, rgba(123,97,255,0.07) 0%, transparent 70%);
+      pointer-events: none; z-index: 0;
+    }
+
+    /* ── Header ── */
+    header {
+      position: sticky; top: 0; z-index: 100;
+      backdrop-filter: blur(20px) saturate(180%);
+      -webkit-backdrop-filter: blur(20px) saturate(180%);
+      background: rgba(8,10,15,0.82);
+      border-bottom: 1px solid var(--border);
+    }
+    .header-inner {
+      max-width: 1340px; margin: 0 auto; padding: 20px 40px;
+      display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    }
+    .logo { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--text); }
+    .logo-icon {
+      width: 36px; height: 36px;
+      background: var(--accent);
+      clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+      animation: pulse-icon 4s ease-in-out infinite;
+    }
+    @keyframes pulse-icon { 0%,100%{box-shadow:0 0 0 0 rgba(0,229,255,0.3)} 50%{box-shadow:0 0 20px 6px rgba(0,229,255,0.15)} }
+    .logo-text { font-size: 1.1rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
+
+    .back-link {
+      display: inline-flex; align-items: center; gap: 6px;
+      color: var(--muted); text-decoration: none; font-size: 0.82rem;
+      font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase;
+      padding: 6px 12px; border-radius: 6px;
+      transition: color 0.2s, background 0.2s;
+    }
+    .back-link:hover { color: var(--text); background: rgba(255,255,255,0.05); }
+
+    /* ── Page ── */
+    .page {
+      position: relative; z-index: 1;
+      max-width: 1340px; margin: 0 auto;
+      padding: 48px 40px 80px;
+      display: grid;
+      grid-template-columns: minmax(260px, 340px) 1fr;
+      gap: 32px; align-items: start;
+    }
+
+    /* ── Art panel ── */
+    .art-panel { position: sticky; top: 100px; }
+    .art-frame {
+      border-radius: 16px; overflow: hidden;
+      border: 1px solid var(--border2);
+      background: var(--surface);
+      box-shadow: 0 0 60px rgba(0,229,255,0.06);
+    }
+    .art-frame img { display: block; width: 100%; height: auto; }
+    .art-caption {
+      padding: 12px 16px;
+      font-size: 0.75rem; font-weight: 600; letter-spacing: 0.06em;
+      text-transform: uppercase; color: var(--muted);
+      text-align: center; border-top: 1px solid var(--border);
+    }
+
+    /* Security note */
+    .security-note {
+      margin-top: 16px; padding: 14px 16px; border-radius: 12px;
+      border: 1px solid rgba(245,200,66,0.2); background: rgba(245,200,66,0.04);
+      font-size: 0.78rem; line-height: 1.6; color: var(--muted);
+    }
+    .security-note strong { color: var(--gold); }
+
+    /* ── Right panel ── */
+    .mint-panel { display: flex; flex-direction: column; gap: 20px; }
+
+    .page-title { font-size: clamp(1.6rem, 3vw, 2.4rem); font-weight: 800; letter-spacing: -0.02em; line-height: 1.2; padding-bottom: 0.08em; margin-bottom: 4px; }
+    .page-subtitle { font-size: 0.85rem; color: var(--muted); }
+    .page-subtitle a { color: var(--accent); text-decoration: none; }
+    .page-subtitle a:hover { text-decoration: underline; }
+
+    /* Section label */
+    .section-tag {
+      font-size: 0.7rem; font-weight: 700; letter-spacing: 0.12em;
+      text-transform: uppercase; color: var(--accent); margin-bottom: 10px;
+    }
+
+    /* ── Network bar ── */
+    .network-bar {
+      display: flex; gap: 20px; flex-wrap: wrap;
+      padding: 14px 18px; border-radius: 12px;
+      border: 1px solid var(--border); background: var(--surface);
+    }
+    .kv { font-size: 0.8rem; color: var(--muted); }
+    .kv strong { color: var(--text); }
+    .kv a { color: var(--accent); text-decoration: none; font-family: 'Space Mono', monospace; font-size: 0.75rem; }
+    .kv a:hover { text-decoration: underline; }
+
+    /* ── Wallet buttons ── */
+    .wallet-section { display: flex; flex-direction: column; gap: 12px; }
+    .wallet-buttons { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+
+    .btn-wallet {
+      padding: 9px 18px; border-radius: 8px;
+      border: 1px solid var(--border2); background: var(--surface2);
+      color: var(--text); font-family: 'DM Sans', sans-serif;
+      font-size: 0.82rem; font-weight: 600; cursor: pointer;
+      transition: border-color 0.2s, background 0.2s, transform 0.15s;
+    }
+    .btn-wallet:hover { border-color: var(--accent); background: rgba(0,229,255,0.05); transform: translateY(-1px); }
+    .btn-wallet[disabled] { opacity: 0.45; cursor: not-allowed; transform: none; }
+
+    .pill {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 6px 14px; border-radius: 999px;
+      border: 1px solid var(--border2); background: var(--surface);
+      font-family: 'Space Mono', monospace; font-size: 0.72rem; color: var(--muted);
+    }
+    .pill::before {
+      content: ''; width: 7px; height: 7px; border-radius: 50%;
+      background: var(--muted);
+    }
+    .pill.connected::before { background: var(--ok); box-shadow: 0 0 6px rgba(34,197,94,0.5); }
+
+    /* ── Stats grid ── */
+    .stats-grid {
+      display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;
+    }
+    .stat-card {
+      padding: 16px 18px; border-radius: 12px;
+      border: 1px solid var(--border); background: var(--surface);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .stat-label { font-size: 0.78rem; color: var(--muted); }
+    .stat-val { font-family: 'Space Mono', monospace; font-size: 0.95rem; font-weight: 700; color: var(--text); }
+    .stat-val.accent { color: var(--accent); }
+
+    /* ── Mint form ── */
+    .mint-form {
+      padding: 24px; border-radius: 16px;
+      border: 1px solid var(--border2); background: var(--surface);
+    }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+    .form-group { display: flex; flex-direction: column; gap: 8px; }
+
+    label { font-size: 0.8rem; font-weight: 600; color: var(--muted); }
+    label.checkbox-label {
+      flex-direction: row; align-items: center; gap: 10px;
+      cursor: pointer; color: var(--text);
+    }
+
+    input[type=text], input[type=number], textarea {
+      width: 100%; padding: 11px 14px; border-radius: 10px;
+      border: 1px solid var(--border2); background: var(--surface2);
+      color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 0.88rem;
+      outline: none; transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    input:focus, textarea:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(0,229,255,0.08);
+    }
+
+    input[type=checkbox] {
+      width: 18px; height: 18px; accent-color: var(--accent);
+      flex-shrink: 0;
+    }
+
+    .hint { font-size: 0.75rem; color: var(--muted); line-height: 1.5; }
+
+    .btn-primary {
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      padding: 12px 28px; border-radius: 10px;
+      background: var(--accent); color: #080a0f;
+      font-family: 'DM Sans', sans-serif; font-size: 0.88rem; font-weight: 700;
+      letter-spacing: 0.04em; text-transform: uppercase;
+      border: none; cursor: pointer;
+      transition: opacity 0.2s, transform 0.15s, box-shadow 0.2s;
+    }
+    .btn-primary:hover { opacity: 0.88; transform: translateY(-1px); box-shadow: 0 6px 24px rgba(0,229,255,0.25); }
+    .btn-primary[disabled] { opacity: 0.35; cursor: not-allowed; transform: none; box-shadow: none; }
+
+    /* ── Status ── */
+    .status-area { min-height: 24px; display: flex; flex-direction: column; gap: 6px; }
+    #status { font-size: 0.85rem; font-weight: 600; min-height: 20px; }
+    .muted  { color: var(--muted); }
+    .ok     { color: var(--ok); }
+    .error  { color: var(--err); }
+    #link a {
+      display: inline-flex; align-items: center; gap: 6px;
+      color: var(--accent); text-decoration: none;
+      font-family: 'Space Mono', monospace; font-size: 0.75rem;
+    }
+    #link a:hover { text-decoration: underline; }
+
+    /* ── Rules ── */
+    .rules-box {
+      padding: 20px 24px; border-radius: 14px;
+      border: 1px solid var(--border); background: var(--surface);
+    }
+    .rules-title { font-size: 0.85rem; font-weight: 700; margin-bottom: 14px; }
+    .rules-list { display: flex; flex-direction: column; gap: 10px; list-style: none; }
+    .rules-list li {
+      display: flex; align-items: flex-start; gap: 10px;
+      font-size: 0.83rem; color: var(--muted); line-height: 1.5;
+    }
+    .rules-list li::before {
+      content: '✓'; color: var(--accent); font-weight: 700;
+      flex-shrink: 0; margin-top: 1px;
+    }
+    .rules-list li strong { color: var(--text); }
+
+    /* ── Switch button ── */
+    #switchBtn {
+      display: none;
+      padding: 9px 18px; border-radius: 8px;
+      border: 1px solid rgba(245,200,66,0.4); background: rgba(245,200,66,0.08);
+      color: var(--gold); font-family: 'Syne', sans-serif;
+      font-size: 0.82rem; font-weight: 600; cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+    }
+    #switchBtn:hover { border-color: var(--gold); background: rgba(245,200,66,0.14); }
+
+    /* ── Responsive ── */
     @media (max-width: 900px) {
+      .page { grid-template-columns: 1fr; }
+      .art-panel { position: static; }
+      .form-row { grid-template-columns: 1fr; }
+      .stats-grid { grid-template-columns: 1fr 1fr; }
+    }
+    @media (max-width: 540px) {
+      .stats-grid { grid-template-columns: 1fr; }
     }
 
+    ::selection { background: rgba(0,229,255,0.25); color: var(--text); }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/ethers@6/dist/ethers.umd.min.js" defer></script>
 </head>
 <body>
-  <div class="wrap">
-    <div class="layout">
-    <!-- LEFT -->
-    <aside class="side">
-      <aside class="art">
-      <!-- put the actual filename below; path is relative to index.html -->
-      <img src="images/mazement_preview.png" alt="Mazement preview"
-           width="640" height="640" loading="eager" decoding="async" />
-      <div class="caption">Mazement preview</div>
+  <div class="glow-top"></div>
+  <div class="glow-mid"></div>
+
+  <header>
+    <div class="header-inner">
+      <a href="/" class="logo">
+        <div class="logo-icon"></div>
+        <span class="logo-text">Mazement</span>
+      </a>
+      <a href="/" class="back-link">← Back to site</a>
+    </div>
+  </header>
+
+  <div class="page">
+    <!-- Left: art -->
+    <aside class="art-panel">
+      <div class="art-frame">
+        <img src="images/mazement_preview.png" alt="Mazement preview" width="640" height="640" loading="eager" decoding="async" />
+        <div class="art-caption">Mazement — Preview</div>
+      </div>
+
+      <div class="security-note">
+        <strong>🔒 Stay Safe:</strong> We will <strong>never</strong> ask for your seed phrase, passwords, or private keys. Only interact via your wallet extension.
+      </div>
     </aside>
-    </aside>
-    <main class="right">
-    <h1>Owner Mint</h1>
-    <div class="kvs">
-      <span>Network: <strong id="network">—</strong></span>
-      <span>Contract: <a id="contractLink" href="#" target="_blank" rel="noreferrer">—</a></span>
-      <span>Name/Symbol: <strong id="ns">—</strong></span>
-    </div>
 
-    <!-- Wallet controls -->
-    <div class="stack" style="margin:12px 0 16px;">
-      <button id="connectAuto">Connect (Auto)</button>
-      <button id="connectBrave">Connect with Brave</button>
-      <button id="connectMM">Connect with MetaMask</button>
-      <button id="connectLegacy">Force Connect (Legacy)</button>
-     <!-- <button id="testEmail">Test Email</button> -->
-      <button id="switchBtn" style="display:none;">Switch to Polygon</button>
-      <span id="address" class="pill">Not connected</span>
-    </div>
+    <!-- Right: mint UI -->
+    <main class="mint-panel">
+      <div>
+        <p class="section-tag">Ethereum Mainnet</p>
+        <h1 class="page-title">Mint Your Maze</h1>
+        <p class="page-subtitle">
+          Connect your wallet, enter your shipping info, and mint. Every NFT includes a physical artwork redemption. 
+          <a href="/" target="_blank" rel="noopener">Learn more →</a>
+        </p>
+      </div>
 
-    <div class="row"><span>Supply</span><strong><span id="supply">—</span>/<span id="max">—</span> (<span id="left">—</span> left)</strong></div>
-    <div class="row"><span>Price</span>
-      <strong>
-        <span id="priceMatic">—</span>
-        <span class="tiny">/ <span id="priceUsd">—</span></span>
-      </strong>
-    </div>
+      <!-- Network info -->
+      <div class="network-bar">
+        <span class="kv">Network: <strong id="network">—</strong></span>
+        <span class="kv">Contract: <a id="contractLink" href="#" target="_blank" rel="noreferrer">—</a></span>
+        <span class="kv">Name/Symbol: <strong id="ns">—</strong></span>
+      </div>
 
-    <!-- Mint panel -->
-    <div class="panel" style="margin-top:12px;">
-      <div class="muted" style="margin-bottom:8px;">Recipient address (single) or multiple (comma, space, or newline-separated)</div>
-      <textarea id="to" rows="3" placeholder="0x... or paste addr1, addr2, addr3..."></textarea>
-
-      <div class="grid" style="margin-top:10px;">
-        <div class="col">
-          <label><input type="checkbox" id="claimNow" checked /> Claim physical now</label>
-          <div class="tiny muted">If enabled, we’ll hash the shipping info below and pass it to <code>mintFor</code>.</div>
-        </div>
-        <div class="col">
-          <label for="shipping">Shipping info (required if claiming)</label>
-          <input id="shipping" type="text" placeholder="Name, email, delivery address..."/>
+      <!-- Wallet -->
+      <div class="wallet-section">
+        <p class="section-tag">Connect Wallet</p>
+        <div class="wallet-buttons">
+          <button class="btn-wallet" id="connectAuto">Auto Connect</button>
+          <button class="btn-wallet" id="connectBrave">Brave Wallet</button>
+          <button class="btn-wallet" id="connectMM">MetaMask</button>
+          <button id="switchBtn">Switch to Ethereum</button>
+          <span id="address" class="pill">Not connected</span>
         </div>
       </div>
 
-      <div class="stack" style="margin-top:12px;">
-        <button id="mintMeBtn" disabled>Mint to me</button>
-        <button id="mintBtn" disabled>Mint to address(es)</button>
+      <!-- Stats -->
+      <div>
+        <p class="section-tag">Drop Stats</p>
+        <div class="stats-grid">
+          <div class="stat-card">
+            <span class="stat-label">Supply</span>
+            <span class="stat-val accent"><span id="supply">—</span>&thinsp;/&thinsp;<span id="max">—</span></span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">Wave</span>
+            <span class="stat-val"><span id="waveIdx">—</span>&thinsp;/&thinsp;<span id="waveTotalCount">—</span></span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">Wave Supply Left</span>
+            <span class="stat-val"><span id="waveLeft">—</span>&thinsp;/&thinsp;<span id="waveSize">—</span></span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">Price</span>
+            <span class="stat-val accent">
+              <span id="priceMatic">—</span>
+              <span style="font-size:0.7rem;color:var(--muted);"> / <span id="priceUsd">—</span></span>
+            </span>
+          </div>
+        </div>
       </div>
-      <div class="tiny muted" style="margin-top:6px;">
-        Each mint calls <code>mintFor(to, claimNow, shippingInfoHash)</code> and sends <code>requiredWei()</code> as <code>msg.value</code>.
+
+      <!-- Mint form -->
+      <div class="mint-form">
+        <p class="section-tag">Mint</p>
+        <div style="margin-bottom:18px;font-size:0.82rem;color:var(--muted);">
+          Each mint includes a physical artwork claim. We'll follow up by email to arrange delivery.
+        </div>
+
+        <div class="form-group" style="margin-bottom:18px;">
+          <label for="shipping-email">Email address <span style="color:var(--err)">*</span></label>
+          <input id="shipping-email" type="text" placeholder="you@example.com"/>
+          <div class="hint">We'll use this to coordinate your physical artwork delivery.</div>
+        </div>
+
+        <div class="form-group" style="margin-bottom:18px;">
+          <label class="checkbox-label">
+            <input type="checkbox" id="claimNow" checked disabled />
+            Claim physical art now
+          </label>
+          <div class="hint" style="margin-top:6px;">Checkbox is locked — your physical is automatically included with this mint.</div>
+        </div>
+
+        <!-- Hidden field that the JS reads — populated from email above -->
+        <input id="shipping" type="hidden"/>
+
+        <div style="padding:12px 16px;border-radius:10px;border:1px solid rgba(255,255,255,0.06);background:rgba(255,255,255,0.03);font-size:0.75rem;color:var(--muted);line-height:1.6;margin-bottom:18px;">
+          🔒 Your email is only used to arrange delivery of your physical artwork and is never sold or shared.
+        </div>
+
+        <button class="btn-primary" id="mintMeBtn" disabled>Mint to My Wallet</button>
+        <div class="hint" style="margin-top:10px;">Each mint uses the current quoted price. The exact <code style="font-family:Space Mono,monospace;font-size:0.75rem">msg.value</code> is sent automatically.</div>
       </div>
-    </div>
 
-    <p id="status" class="muted" style="min-height:22px; margin-top:14px;"></p>
-    <div id="link" class="links" style="min-height:22px;"></div>
+      <!-- Status -->
+      <div class="status-area">
+        <p id="status" class="muted" style="min-height:22px;"></p>
+        <div id="link" style="min-height:22px;"></div>
+      </div>
 
-    <div class="divider"></div>
-
+      <!-- Rules -->
+      <div class="rules-box">
+        <p class="rules-title">How This Drop Works</p>
+        <ul class="rules-list">
+          <li>First <strong>10 wallets</strong> get <strong>one free mint</strong> — gas still applies. Wave 1 only.</li>
+          <li>Max <strong>2 mints per wallet</strong> per wave to keep it fair.</li>
+          <li><strong>25% discount</strong> on second mint when supply is below 30. Wave 1 only.</li>
+          <li><strong>Art reveals after minting</strong> — each maze is uniquely generated.</li>
+          <li><strong>One physical artwork per mint</strong> — we collect your shipping here.</li>
+          <li>We will <strong>never</strong> ask for your seed phrase, passwords, or keys.</li>
+        </ul>
+      </div>
     </main>
   </div>
 
   <script defer>
     // ====== CONTRACT CONFIG ======
-    const RAW_CONTRACT_ADDRESS = "0x20e28b37f331c9d94f1685f5fa1d1fc6d59d69b6"; // your address
+    const RAW_CONTRACT_ADDRESS = "0xA58Bb81b1b3d96dd42E231e3fC49c29BE69F1E11"; // mainnet
     const ABI = [
-      {"type":"function","name":"totalMinted","stateMutability":"view","inputs":[],"outputs":[{"type":"uint256"}]},
-      {"type":"function","name":"MAX_SUPPLY","stateMutability":"view","inputs":[],"outputs":[{"type":"uint256"}]},
-      {"type":"function","name":"remaining","stateMutability":"view","inputs":[],"outputs":[{"type":"uint256"}]},
-      {"type":"function","name":"owner","stateMutability":"view","inputs":[],"outputs":[{"type":"address"}]},
-      {"type":"function","name":"name","stateMutability":"view","inputs":[],"outputs":[{"type":"string"}]},
-      {"type":"function","name":"symbol","stateMutability":"view","inputs":[],"outputs":[{"type":"string"}]},
-      // Pricing
-      {"type":"function","name":"requiredWei","stateMutability":"view","inputs":[],"outputs":[{"type":"uint256"}]},
-      {"type":"function","name":"mintPriceUsdCents","stateMutability":"view","inputs":[],"outputs":[{"type":"uint256"}]},
-      // Physical / admin
-      {"type":"function","name":"claimOpen","stateMutability":"view","inputs":[],"outputs":[{"type":"bool"}]},
-      {"type":"function","name":"deliveryUpdatesOpen","stateMutability":"view","inputs":[],"outputs":[{"type":"bool"}]},
-      {"type":"function","name":"physicalClaimed","stateMutability":"view","inputs":[{"type":"uint256"}],"outputs":[{"type":"bool"}]},
-      {"type":"function","name":"physicalDelivered","stateMutability":"view","inputs":[{"type":"uint256"}],"outputs":[{"type":"bool"}]},
-      {"type":"function","name":"setDelivered","stateMutability":"nonpayable","inputs":[{"type":"uint256","name":"tokenId"},{"type":"bool","name":"delivered"}],"outputs":[]},
-      // Mint
-      {"type":"function","name":"mintFor","stateMutability":"payable","inputs":[{"name":"to","type":"address"},{"name":"claimNow","type":"bool"},{"name":"shippingInfoHash","type":"bytes32"}],"outputs":[]},
+      {"inputs":[{"internalType":"string","name":"initialBaseURI","type":"string"},{"internalType":"uint256","name":"initialMintPriceWei","type":"uint256"}],"stateMutability":"nonpayable","type":"constructor"},
+      {"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"owner","type":"address"},{"indexed":true,"internalType":"address","name":"approved","type":"address"},{"indexed":true,"internalType":"uint256","name":"tokenId","type":"uint256"}],"name":"Approval","type":"event"},
+      {"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"owner","type":"address"},{"indexed":true,"internalType":"address","name":"operator","type":"address"},{"indexed":false,"internalType":"bool","name":"approved","type":"bool"}],"name":"ApprovalForAll","type":"event"},
+      {"anonymous":false,"inputs":[{"indexed":false,"internalType":"uint256","name":"oldVal","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"newVal","type":"uint256"}],"name":"MaxPerWalletPerWaveUpdated","type":"event"},
+      {"anonymous":false,"inputs":[{"indexed":false,"internalType":"uint256","name":"oldAge","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"newAge","type":"uint256"}],"name":"MaxPriceAgeUpdated","type":"event"},
+      {"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"previousOwner","type":"address"},{"indexed":true,"internalType":"address","name":"newOwner","type":"address"}],"name":"OwnershipTransferred","type":"event"},
+      {"anonymous":false,"inputs":[{"indexed":true,"internalType":"uint256","name":"tokenId","type":"uint256"},{"indexed":false,"internalType":"bool","name":"claimed","type":"bool"}],"name":"PhysicalClaimedSet","type":"event"},
+      {"anonymous":false,"inputs":[{"indexed":true,"internalType":"uint256","name":"tokenId","type":"uint256"},{"indexed":false,"internalType":"bool","name":"fulfilled","type":"bool"}],"name":"PhysicalFulfillmentSet","type":"event"},
+      {"anonymous":false,"inputs":[{"indexed":true,"internalType":"uint256","name":"tokenId","type":"uint256"},{"indexed":false,"internalType":"bool","name":"shipped","type":"bool"}],"name":"PhysicalShippedSet","type":"event"},
+      {"anonymous":false,"inputs":[{"indexed":false,"internalType":"address","name":"oldFeed","type":"address"},{"indexed":false,"internalType":"address","name":"newFeed","type":"address"}],"name":"PriceFeedUpdated","type":"event"},
+      {"anonymous":false,"inputs":[{"indexed":false,"internalType":"bool","name":"enabled","type":"bool"},{"indexed":false,"internalType":"uint256","name":"waveId","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"freeQty","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"discountQty","type":"uint256"},{"indexed":false,"internalType":"uint96","name":"discountBps","type":"uint96"}],"name":"PromoPricingUpdated","type":"event"},
+      {"anonymous":false,"inputs":[{"indexed":false,"internalType":"uint256","name":"oldPrice","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"newPrice","type":"uint256"}],"name":"UsdMintPriceUpdated","type":"event"},
+      {"anonymous":false,"inputs":[{"indexed":false,"internalType":"bool","name":"oldVal","type":"bool"},{"indexed":false,"internalType":"bool","name":"newVal","type":"bool"}],"name":"UseOraclePricingUpdated","type":"event"},
+      {"anonymous":false,"inputs":[{"indexed":false,"internalType":"uint256","name":"newWaveId","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"newReleaseCap","type":"uint256"}],"name":"WaveAdvanced","type":"event"},
+      {"anonymous":false,"inputs":[{"indexed":true,"internalType":"uint256","name":"wave","type":"uint256"},{"indexed":false,"internalType":"string","name":"uri","type":"string"}],"name":"WaveBaseURISet","type":"event"},
+      {"inputs":[{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"tokenId","type":"uint256"}],"name":"approve","outputs":[],"stateMutability":"nonpayable","type":"function"},
+      {"inputs":[],"name":"deleteDefaultRoyalty","outputs":[],"stateMutability":"nonpayable","type":"function"},
+      {"inputs":[],"name":"freezeMetadata","outputs":[],"stateMutability":"nonpayable","type":"function"},
+      {"inputs":[{"internalType":"uint256","name":"tokenId","type":"uint256"}],"name":"markFulfilled","outputs":[],"stateMutability":"nonpayable","type":"function"},
+      {"inputs":[],"name":"mint","outputs":[],"stateMutability":"payable","type":"function"},
+      {"inputs":[],"name":"openNextTranche","outputs":[],"stateMutability":"nonpayable","type":"function"},
+      {"inputs":[{"internalType":"address","name":"from","type":"address"},{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"tokenId","type":"uint256"}],"name":"safeTransferFrom","outputs":[],"stateMutability":"nonpayable","type":"function"},
+      {"inputs":[{"internalType":"address","name":"from","type":"address"},{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"tokenId","type":"uint256"},{"internalType":"bytes","name":"data","type":"bytes"}],"name":"safeTransferFrom","outputs":[],"stateMutability":"nonpayable","type":"function"},
+      {"inputs":[{"internalType":"address","name":"operator","type":"address"},{"internalType":"bool","name":"approved","type":"bool"}],"name":"setApprovalForAll","outputs":[],"stateMutability":"nonpayable","type":"function"},
+      {"inputs":[{"internalType":"string","name":"newBaseURI","type":"string"}],"name":"setBaseURI","outputs":[],"stateMutability":"nonpayable","type":"function"},
+      {"inputs":[{"internalType":"address","name":"receiver","type":"address"},{"internalType":"uint96","name":"feeNumerator","type":"uint96"}],"name":"setDefaultRoyalty","outputs":[],"stateMutability":"nonpayable","type":"function"},
+      {"inputs":[{"internalType":"string","name":"e","type":"string"}],"name":"setFilenameExtension","outputs":[],"stateMutability":"nonpayable","type":"function"},
+      {"inputs":[{"internalType":"string","name":"p","type":"string"}],"name":"setFilenamePrefix","outputs":[],"stateMutability":"nonpayable","type":"function"},
+      {"inputs":[{"internalType":"uint256","name":"n","type":"uint256"}],"name":"setMaxPerWalletPerWave","outputs":[],"stateMutability":"nonpayable","type":"function"},
+      {"inputs":[{"internalType":"uint256","name":"seconds_","type":"uint256"}],"name":"setMaxPriceAge","outputs":[],"stateMutability":"nonpayable","type":"function"},
+      {"inputs":[{"internalType":"uint256","name":"newPriceWei","type":"uint256"}],"name":"setMintPriceWei","outputs":[],"stateMutability":"nonpayable","type":"function"},
+      {"inputs":[{"internalType":"uint256","name":"tokenId","type":"uint256"}],"name":"setPhysicalClaimed","outputs":[],"stateMutability":"nonpayable","type":"function"},
+      {"inputs":[{"internalType":"uint256","name":"tokenId","type":"uint256"}],"name":"setPhysicalShipped","outputs":[],"stateMutability":"nonpayable","type":"function"},
+      {"inputs":[{"internalType":"address","name":"feed","type":"address"}],"name":"setPriceFeed","outputs":[],"stateMutability":"nonpayable","type":"function"},
+      {"inputs":[{"internalType":"uint256","name":"n","type":"uint256"}],"name":"setPromoFreePerWallet","outputs":[],"stateMutability":"nonpayable","type":"function"},
+      {"inputs":[{"internalType":"bool","name":"enabled","type":"bool"},{"internalType":"uint256","name":"wave","type":"uint256"},{"internalType":"uint256","name":"freeQty","type":"uint256"},{"internalType":"uint256","name":"discountQty","type":"uint256"},{"internalType":"uint96","name":"discountBps_","type":"uint96"}],"name":"setPromoPricing","outputs":[],"stateMutability":"nonpayable","type":"function"},
+      {"inputs":[{"internalType":"uint256","name":"newCap","type":"uint256"}],"name":"setReleaseCap","outputs":[],"stateMutability":"nonpayable","type":"function"},
+      {"inputs":[{"internalType":"bool","name":"active","type":"bool"}],"name":"setSaleActive","outputs":[],"stateMutability":"nonpayable","type":"function"},
+      {"inputs":[{"internalType":"uint256","name":"usdAmount18","type":"uint256"}],"name":"setUsdMintPrice","outputs":[],"stateMutability":"nonpayable","type":"function"},
+      {"inputs":[{"internalType":"bool","name":"v","type":"bool"}],"name":"setUseOraclePricing","outputs":[],"stateMutability":"nonpayable","type":"function"},
+      {"inputs":[{"internalType":"uint256","name":"wave","type":"uint256"},{"internalType":"string","name":"uri","type":"string"}],"name":"setWaveBaseURI","outputs":[],"stateMutability":"nonpayable","type":"function"},
+      {"inputs":[{"internalType":"uint256","name":"newReleaseCap","type":"uint256"},{"internalType":"string","name":"waveURI","type":"string"}],"name":"startNextWave","outputs":[],"stateMutability":"nonpayable","type":"function"},
+      {"inputs":[{"internalType":"address payable","name":"to","type":"address"}],"name":"withdraw","outputs":[],"stateMutability":"nonpayable","type":"function"},
+      {"inputs":[{"internalType":"address","name":"owner","type":"address"}],"name":"balanceOf","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+      {"inputs":[],"name":"CREATOR","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},
+      {"inputs":[],"name":"currentMintPriceWei","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+      {"inputs":[],"name":"ethUsdFeed","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},
+      {"inputs":[],"name":"filenameExtension","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"view","type":"function"},
+      {"inputs":[],"name":"filenamePrefix","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"view","type":"function"},
+      {"inputs":[{"internalType":"uint256","name":"tokenId","type":"uint256"}],"name":"getApproved","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},
+      {"inputs":[{"internalType":"address","name":"owner","type":"address"},{"internalType":"address","name":"operator","type":"address"}],"name":"isApprovedForAll","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"},
+      {"inputs":[],"name":"MAX_SUPPLY","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+      {"inputs":[],"name":"maxPerWalletPerWave","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+      {"inputs":[],"name":"maxPriceAge","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+      {"inputs":[],"name":"metadataFrozen","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"},
+      {"inputs":[{"internalType":"uint256","name":""},{"internalType":"address","name":""}],"name":"mintedByWave","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+      {"inputs":[],"name":"mintPriceWei","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+      {"inputs":[],"name":"name","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"view","type":"function"},
+      {"inputs":[],"name":"owner","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},
+      {"inputs":[{"internalType":"uint256","name":"tokenId","type":"uint256"}],"name":"ownerOf","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},
+      {"inputs":[{"internalType":"uint256","name":""}],"name":"physicalClaimed","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"},
+      {"inputs":[{"internalType":"uint256","name":""}],"name":"physicalFulfilled","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"},
+      {"inputs":[{"internalType":"uint256","name":""}],"name":"physicalShipped","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"},
+      {"inputs":[],"name":"promoDiscountBps","outputs":[{"internalType":"uint96","name":"","type":"uint96"}],"stateMutability":"view","type":"function"},
+      {"inputs":[],"name":"promoDiscountQty","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+      {"inputs":[],"name":"promoFreePerWallet","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+      {"inputs":[],"name":"promoFreeQty","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+      {"inputs":[{"internalType":"uint256","name":""},{"internalType":"address","name":""}],"name":"promoFreeUsed","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+      {"inputs":[],"name":"promoPricingEnabled","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"},
+      {"inputs":[],"name":"promoWaveId","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+      {"inputs":[],"name":"quoteNextMintPriceWei","outputs":[{"internalType":"uint256","name":"priceWei","type":"uint256"},{"internalType":"uint8","name":"tier","type":"uint8"}],"stateMutability":"view","type":"function"},
+      {"inputs":[{"internalType":"address","name":"buyer","type":"address"}],"name":"quoteNextMintPriceWeiFor","outputs":[{"internalType":"uint256","name":"priceWei","type":"uint256"},{"internalType":"uint8","name":"tier","type":"uint8"}],"stateMutability":"view","type":"function"},
+      {"inputs":[],"name":"releaseCap","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+      {"inputs":[],"name":"remainingInTranche","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+      {"inputs":[],"name":"remainingInWave","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+      {"inputs":[{"internalType":"uint256","name":"tokenId","type":"uint256"},{"internalType":"uint256","name":"salePrice","type":"uint256"}],"name":"royaltyInfo","outputs":[{"internalType":"address","name":"receiver","type":"address"},{"internalType":"uint256","name":"amount","type":"uint256"}],"stateMutability":"view","type":"function"},
+      {"inputs":[],"name":"saleActive","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"},
+      {"inputs":[{"internalType":"bytes4","name":"iid","type":"bytes4"}],"name":"supportsInterface","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"},
+      {"inputs":[],"name":"symbol","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"view","type":"function"},
+      {"inputs":[{"internalType":"uint256","name":"tokenId","type":"uint256"}],"name":"tokenURI","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"view","type":"function"},
+      {"inputs":[{"internalType":"uint256","name":""}],"name":"tokenWave","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+      {"inputs":[],"name":"totalMinted","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+      {"inputs":[],"name":"TRANCHE_SIZE","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+      {"inputs":[],"name":"trancheId","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+      {"inputs":[],"name":"usdMintPrice","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+      {"inputs":[],"name":"useOraclePricing","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"},
+      {"inputs":[],"name":"WAVE_SIZE","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+      {"inputs":[{"internalType":"uint256","name":""}],"name":"waveBaseURI","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"view","type":"function"},
+      {"inputs":[],"name":"waveId","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+      {"inputs":[{"internalType":"uint256","name":""}],"name":"waveStartMinted","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"}
     ];
 
     // --- Email webhook (Google Apps Script Web App URL) ---
     const EMAIL_WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbz_FeczSgjnUyIKUmi5PinPuyjc9g4bh9lhafeX2Z1r9hK-jeseMPaB9hFGUk4Bp-4eSA/exec";
 
-    // CORS-friendly email sender
-    async function sendClaimEmail({ wallet, tokenId, txHash, claimNow, shippingText, shippingHash }) {
+    window.sendClaimEmail = async function sendClaimEmail({ wallet, tokenId, txHash, claimNow, shippingText, shippingHash, origin }) {
       if (!EMAIL_WEBHOOK_URL) { setStatus("Email not configured (EMAIL_WEBHOOK_URL is empty).", "error"); return; }
-      const payload = { wallet, tokenId, txHash, claimNow: !!claimNow, shippingText: shippingText || "", shippingHash: shippingHash || "", timestamp: new Date().toISOString(), schema: "v1" };
+      const payload = {
+        wallet, tokenId: tokenId || "(unknown)", txHash,
+        claimNow: !!claimNow, shippingText: shippingText || "",
+        shippingHash: shippingHash || "", origin: origin || getSafeOrigin(),
+        timestamp: new Date().toISOString(), schema: "v1"
+      };
       try {
         await fetch(EMAIL_WEBHOOK_URL, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(payload) });
-        setStatus("Email sent to the artist. For any enquiries please email claims@rbyrneart.com.", "ok");
+        setStatus("Email sent to the artist. For any enquiries please email clintonbyrne@hotmail.com.", "ok");
       } catch (e1) {
         try {
           await fetch(EMAIL_WEBHOOK_URL, { method: "POST", mode: "no-cors", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(payload) });
@@ -157,41 +542,24 @@
       }
     }
 
-    const POLYGON_CHAIN_ID_HEX = "0x89"; // 137
-    const POLYGON_PARAMS = {
-      chainId: POLYGON_CHAIN_ID_HEX,
-      chainName: "Polygon",
-      nativeCurrency: { name: "MATIC", symbol: "MATIC", decimals: 18 },
-      rpcUrls: ["https://polygon-rpc.com","https://rpc.ankr.com/polygon"],
-      blockExplorerUrls: ["https://polygonscan.com"]
-    };
-
-    // Friendly chain names
-    const CHAIN_NAME = {
-      1:"Ethereum",137:"Polygon",80002:"Polygon Amoy",10:"OP Mainnet",42161:"Arbitrum One",
-      8453:"Base",56:"BNB Smart Chain",43114:"Avalanche C-Chain",324:"zkSync Era",
-      11155111:"Sepolia",5:"Goerli (deprecated)"
-    };
-    const getChainNameFromId = (n,fallback)=> CHAIN_NAME[n] || fallback || `Chain ${n}`;
+    const ETH_CHAIN_ID_HEX = "0x1";
+    const EXPLORER_BASE = "https://etherscan.io";
+    const linkExplorer = (p) => `${EXPLORER_BASE}/${p}`;
+    const CHAIN_NAME = { 1:"Ethereum",137:"Polygon",80002:"Polygon Amoy",10:"OP Mainnet",42161:"Arbitrum One",8453:"Base",56:"BNB Smart Chain",43114:"Avalanche C-Chain",324:"zkSync Era",11155111:"Sepolia",5:"Goerli (deprecated)" };
+    const getChainNameFromId = (n, fallback) => CHAIN_NAME[n] || fallback || `Chain ${n}`;
 
     const el = id => document.getElementById(id);
-    const linkPolygonscan = (p) => `https://polygonscan.com/${p}`;
     const setStatus = (msg, cls="muted") => { const s=el("status"); s.className=cls; s.textContent=msg||""; };
 
-    // --- EIP-6963 discovery (Brave/MM) ---
+    // EIP-6963 discovery
     const discovered = new Map();
     window.addEventListener("eip6963:announceProvider", (ev) => { discovered.set(ev.detail.info.uuid, ev.detail); });
     window.dispatchEvent(new Event("eip6963:requestProvider"));
     function getAllInjected() {
       const from6963 = [...discovered.values()].map(d => d && d.provider).filter(Boolean);
       const eth = window.ethereum;
-      const fromEth = (() => {
-        if (!eth) return [];
-        if (Array.isArray(eth.providers) && eth.providers.length) return eth.providers.filter(Boolean);
-        return [eth];
-      })();
-      const set = new Set([...from6963, ...fromEth]);
-      return [...set];
+      const fromEth = (() => { if (!eth) return []; if (Array.isArray(eth.providers) && eth.providers.length) return eth.providers.filter(Boolean); return [eth]; })();
+      return [...new Set([...from6963, ...fromEth])];
     }
     function pickProvider(kind="auto"){
       const list = getAllInjected(); if (!list.length) return null;
@@ -206,329 +574,201 @@
       if (!injected || injected.__hasHandlers) return;
       injected.__hasHandlers = true;
       injected.on?.("accountsChanged", () => connect(localStorage.getItem("walletPref") || "auto"));
-      injected.on?.("chainChanged",   () => connect(localStorage.getItem("walletPref") || "auto"));
-      injected.on?.("disconnect",     () => { setStatus("Wallet disconnected.", "error"); el("address").textContent="Not connected"; disableMint(true); });
+      injected.on?.("chainChanged",    () => connect(localStorage.getItem("walletPref") || "auto"));
+      injected.on?.("disconnect",      () => { setStatus("Wallet disconnected.", "error"); el("address").textContent="Not connected"; el("address").classList.remove("connected"); disableMint(true); });
     }
 
-    let provider, signer, contract, ownerAddr, myAddr, currentInjected = null;
+    let provider, signer, contract, myAddr, currentInjected = null;
     let CONTRACT_ADDRESS;
-    let currentPriceWei = 0n; // per mint
 
-    // ===== Helpers =====
     function normalizeAddress(s){ try { return ethers.getAddress(s.trim()); } catch { return null; } }
-    function parseAddresses(text){
-      return text.split(/[\s,]+/g).map(s=>s.trim()).filter(Boolean).map(normalizeAddress).filter(Boolean);
+    function formatEth(wei){ try { return `${ethers.formatEther(wei)} ETH`; } catch { return `${wei.toString()} wei`; } }
+    function formatUsd18(x){
+      try{
+        const n = BigInt(x.toString());
+        const whole = (n / 10n**18n).toString();
+        const frac  = (n % 10n**18n).toString().padStart(18, "0").slice(0,2);
+        return `$${whole}.${frac}`;
+      } catch { return `$${x}`; }
     }
-    function formatMatic(wei){ try { return `${ethers.formatEther(wei)} MATIC`; } catch { return `${wei.toString()} wei`; } }
-    function formatUsdCents(c){ try{ const n = BigInt(c); const d = (n/100n).toString(); const r = (n%100n).toString().padStart(2,"0"); return `$${d}.${r}`; } catch { return `$${c}`; } }
-   
-    // Canonical shipping text + dynamic shipping hash based on checkbox
     function canonicalShippingJson() {
-      const text = el("shipping").value.trim().replace(/\s+/g, " ");
-      return JSON.stringify({ v: "1", text });
+      const email = (el("shipping-email")?.value || "").trim().replace(/\s+/g, " ");
+      const hiddenEl = el("shipping");
+      if (hiddenEl) hiddenEl.value = email;
+      return JSON.stringify({ v: "1", text: email });
+    }
+    function getSafeOrigin(){
+      try {
+        const o = window.location && window.location.origin;
+        if (o && o !== "null") return o;
+        const { protocol, host } = window.location || {};
+        if (protocol === "file:" || protocol === "about:") return "file://local-test";
+        if (protocol && host) return `${protocol}//${host}`;
+      } catch {}
+      return "unknown";
     }
     function shippingHashOrZero() {
-      const claim = !!el("claimNow").checked;
-      if (!claim) return "0x" + "00".repeat(32);
+      const email = (el("shipping-email")?.value || "").trim();
+      if (!email) return null;
       const canonical = canonicalShippingJson();
-      const { text } = JSON.parse(canonical);
-      if (!text) return null; // require shipping when claiming
       return ethers.id(canonical);
     }
-
-    function disableMint(disabled){ el("mintBtn").disabled = !!disabled; el("mintMeBtn").disabled = !!disabled; }
-    function updateMintButtonsEnabled(){
-      const isOwner = ownerAddr && myAddr && ownerAddr.toLowerCase() === myAddr.toLowerCase();
-      const ready = !!contract && isOwner;  // don't gate on claim/shipping here
-      el("mintMeBtn").disabled = !ready;
-      el("mintBtn").disabled   = !ready;
-    }
-
-    async function quotePriceWei() {
-      const p = await contract.requiredWei();
-      return BigInt(p.toString());
-    }
+    function disableMint(disabled){ const meBtn = el("mintMeBtn"); if (meBtn) meBtn.disabled = !!disabled; }
+    function updateMintButtonsEnabled(){ const ready = !!contract && !!myAddr; const meBtn = el("mintMeBtn"); if (meBtn) meBtn.disabled = !ready; }
 
     async function connect(kind="auto"){
       const injected = pickProvider(kind);
       if (!injected){ setStatus("No wallet detected. In Brave, enable Brave Wallet (brave://settings/wallet).", "error"); return; }
       currentInjected = injected;
       attachProviderEvents(injected);
+      try {
+        setStatus("Connecting…");
+        const accounts = await injected.request({ method: "eth_requestAccounts" });
+        if (!accounts || !accounts.length) { setStatus("No accounts returned.", "error"); return; }
 
-      try{
-        await injected.request({ method:"eth_requestAccounts" });
         provider = new ethers.BrowserProvider(injected);
-        signer = await provider.getSigner();
-        myAddr = await signer.getAddress();
-        el("address").textContent = `${myAddr.slice(0,6)}…${myAddr.slice(-4)}`;
+        signer   = await provider.getSigner();
+        myAddr   = await signer.getAddress();
 
-        try { CONTRACT_ADDRESS = ethers.getAddress(RAW_CONTRACT_ADDRESS); }
-        catch { setStatus("Invalid contract address configured.", "error"); disableMint(true); return; }
+        const addrEl = el("address");
+        addrEl.textContent = myAddr.slice(0,6) + "…" + myAddr.slice(-4);
+        addrEl.classList.add("connected");
 
-        const net = await provider.getNetwork();
-        const cid = Number(net.chainId);
-        const friendly = getChainNameFromId(cid, net.name);
-        el("network").textContent = `${friendly} (${cid})`;
+        const network = await provider.getNetwork();
+        const chainId = Number(network.chainId);
+        const chainName = getChainNameFromId(chainId, network.name);
+        const nsEl = el("network"); if (nsEl) nsEl.textContent = chainName;
 
-        el("contractLink").textContent = `${CONTRACT_ADDRESS.slice(0,6)}…${CONTRACT_ADDRESS.slice(-4)}`;
-        el("contractLink").href = linkPolygonscan(`address/${CONTRACT_ADDRESS}`);
-
-        if (cid !== 137){
-          el("switchBtn").style.display = "inline-block";
-          setStatus("Wrong network. Click “Switch to Polygon”.", "error");
-          disableMint(true); return;
+        if (chainId !== 1) {
+          setStatus(`Wrong network: ${chainName}. Please switch to Ethereum.`, "error");
+          el("switchBtn").style.display = "inline-flex";
+          disableMint(true);
+          return;
         }
         el("switchBtn").style.display = "none";
 
+        CONTRACT_ADDRESS = normalizeAddress(RAW_CONTRACT_ADDRESS);
+        if (!CONTRACT_ADDRESS) { setStatus("Bad contract address in config.", "error"); return; }
+
+        const clinkEl = el("contractLink");
+        if (clinkEl) { clinkEl.href = linkExplorer(`address/${CONTRACT_ADDRESS}`); clinkEl.textContent = CONTRACT_ADDRESS.slice(0,6)+"…"+CONTRACT_ADDRESS.slice(-4); }
+
         contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, signer);
 
-        // Owner gate
-        ownerAddr = await contract.owner();
-        const isOwner = ownerAddr.toLowerCase() === myAddr.toLowerCase();
-        if (!isOwner){
-          setStatus("This page is owner-only mint. Your wallet is not the owner.", "error");
-          disableMint(true);
-        } else {
-          setStatus("");
-          disableMint(false);
-          if (!el("to").value.trim()) el("to").value = myAddr;
-          await refreshReads();
-          updateMintButtonsEnabled();
-        }
-      }catch(err){
-        console.error(err);
-        setStatus(err?.shortMessage || err?.message || String(err), "error");
-        disableMint(true);
+        const [cName, cSymbol] = await Promise.all([contract.name(), contract.symbol()]);
+        const nsEl2 = el("ns"); if (nsEl2) nsEl2.textContent = `${cName} / ${cSymbol}`;
+
+        setStatus("Connected!", "ok");
+        updateMintButtonsEnabled();
+        await refreshReads();
+
+      } catch (e) {
+        console.error(e);
+        if (e?.code === 4001) setStatus("Connection rejected.", "error");
+        else setStatus("Connection error: " + (e?.shortMessage || e?.message || String(e)), "error");
       }
     }
 
-    async function switchToPolygon(){
+    async function switchToEthereum(){
       const injected = currentInjected || pickProvider("auto");
-      if (!injected) return setStatus("No wallet available to switch.", "error");
-      try{
-        await injected.request({ method:"wallet_switchEthereumChain", params:[{ chainId: POLYGON_CHAIN_ID_HEX }] });
-      }catch(err){
-        if (err && err.code === 4902){
-          await injected.request({ method:"wallet_addEthereumChain", params:[POLYGON_PARAMS] });
-        } else { setStatus(err?.message || "Network switch failed.", "error"); return; }
-      }
-      await connect(localStorage.getItem("walletPref") || "auto");
+      if (!injected) return;
+      try {
+        await injected.request({ method: "wallet_switchEthereumChain", params: [{ chainId: ETH_CHAIN_ID_HEX }] });
+      } catch (e) { setStatus("Could not switch chain: " + (e?.message || String(e)), "error"); }
     }
 
     async function refreshReads(){
       if (!contract) return;
-      try{
-        const [minted, max, remaining, name, symbol, priceWei, priceCents, _claimOpen, _deliveryOpen] = await Promise.all([
-          contract.totalMinted(),
-          contract.MAX_SUPPLY(),
-          contract.remaining(),
-          contract.name(),
-          contract.symbol(),
-          contract.requiredWei(),
-          contract.mintPriceUsdCents(),
-          contract.claimOpen(),
-          contract.deliveryUpdatesOpen()
+      try {
+        const addr = myAddr || ethers.ZeroAddress;
+        const [mintedBN, maxSupplyBN, saleOpen, waveIdxBN, waveSizeBN, leftWaveBN, priceWeiArr, usdPriceRaw] = await Promise.all([
+          contract.totalMinted().catch(()=>null),
+          contract.MAX_SUPPLY().catch(()=>null),
+          contract.saleActive().catch(()=>false),
+          contract.waveId().catch(()=>null),
+          contract.WAVE_SIZE().catch(()=>null),
+          contract.remainingInWave().catch(()=>null),
+          contract.quoteNextMintPriceWeiFor(addr).catch(()=>null),
+          contract.usdMintPrice().catch(()=>null),
         ]);
-        el("supply").textContent = BigInt(minted).toString();
-        el("max").textContent = BigInt(max).toString();
-        el("left").textContent = BigInt(remaining).toString();
-        el("ns").textContent = `${name} / ${symbol}`;
 
-        currentPriceWei = BigInt(priceWei.toString());
-        el("priceMatic").textContent = formatMatic(currentPriceWei);
-        el("priceUsd").textContent = formatUsdCents(priceCents);
+        const [priceWei] = priceWeiArr ?? [null];
+        const priceEl = el("priceMatic"); if (priceEl) priceEl.textContent = priceWei !== null ? formatEth(priceWei) : "—";
+        const usdEl   = el("priceUsd");  if (usdEl)   usdEl.textContent   = usdPriceRaw !== null ? formatUsd18(usdPriceRaw) : "—";
 
-      }catch(e){
-        console.warn("read error", e);
-      }
+        const waveIdxHuman = waveIdxBN !== null ? (Number(waveIdxBN)+1).toString() : "—";
+        const totalWavesText = "∞";
+
+        if (el("waveIdx"))      el("waveIdx").textContent      = String(waveIdxHuman);
+        if (el("waveTotalCount")) el("waveTotalCount").textContent = totalWavesText;
+        if (el("waveLeft"))     el("waveLeft").textContent     = leftWaveBN !== null ? leftWaveBN.toString() : "—";
+        if (el("waveSize"))     el("waveSize").textContent     = waveSizeBN !== null ? waveSizeBN.toString() : "—";
+        if (el("supply"))       el("supply").textContent       = mintedBN !== null ? mintedBN.toString() : "—";
+        if (el("max"))          el("max").textContent          = maxSupplyBN !== null ? maxSupplyBN.toString() : "—";
+        if (el("left"))         el("left").textContent         = leftWaveBN !== null ? leftWaveBN.toString() : "—";
+
+        if (!saleOpen) { setStatus("Sale is not active yet.", "error"); disableMint(true); }
+        else { disableMint(false); }
+
+        const claimEl = el("claimNow"); const shipEl = el("shipping");
+        if (claimEl) { claimEl.checked = true; claimEl.disabled = true; }
+        if (shipEl)  { shipEl.disabled = false; }
+
+      } catch (e) { console.warn("read error", e); }
     }
 
-    async function mintOne(to, claimNow, shippingHash){
-      let price = await quotePriceWei();
-      try {
-        return await contract.mintFor(to, !!claimNow, shippingHash, { value: price });
-      } catch (e) {
+    async function mintOne(){
+      const [price] = await contract.quoteNextMintPriceWeiFor(myAddr);
+      try { return await contract.mint({ value: price }); }
+      catch (e) {
         const msg = (e?.shortMessage || e?.message || "").toLowerCase();
-        const needRetry =
-          msg.includes("incorrect eth") ||
-          msg.includes("invalid msg.value") ||
-          msg.includes("insufficient") ||
-          msg.includes("price") ||
-          e?.reason === "Incorrect ETH.";
-    
+        const needRetry = msg.includes("incorrect eth") || msg.includes("invalid msg.value") || msg.includes("price") || e?.reason === "Incorrect ETH.";
         if (!needRetry) throw e;
-    
-        price = await quotePriceWei();
-        return await contract.mintFor(to, !!claimNow, shippingHash, { value: price });
+        const [fresh] = await contract.quoteNextMintPriceWeiFor(myAddr);
+        return await contract.mint({ value: fresh });
       }
     }
 
     async function mintToMe(){
       if (!contract || !myAddr) return;
-
-      const claimNow = !!el("claimNow").checked;
       const shippingHash = shippingHashOrZero();
-      if (claimNow && !shippingHash) {
-        setStatus("Please enter shipping info (required when claiming).", "error"); return;
-      }
-
-      try{
+      if (!shippingHash) { setStatus("Please enter your email address before minting.", "error"); return; }
+      try {
         const me = normalizeAddress(myAddr); if (!me) return setStatus("Invalid sender address.", "error");
         setStatus("Sending tx…");
         disableMint(true);
-        const tx = await mintOne(me, claimNow, shippingHash);
+        const tx = await mintOne();
         setStatus("Mining…");
         const receipt = await tx.wait();
         setStatus("✅ Confirmed", "ok");
-
-        const shippingText = claimNow ? canonicalShippingJson() : "";
-        await sendClaimEmail({
-          wallet: myAddr,
-          tokenId: "(unknown)",
-          txHash: receipt.hash,
-          claimNow,
-          shippingText,
-          shippingHash
-        });
-
+        const shippingText = canonicalShippingJson();
+        await sendClaimEmail({ wallet: myAddr, tokenId: "(unknown)", txHash: receipt.hash, claimNow: true, shippingText, shippingHash });
         const a = document.createElement("a");
-        a.href = linkPolygonscan(`tx/${receipt.hash}`); a.target = "_blank"; a.rel = "noreferrer"; a.textContent = `Tx: ${receipt.hash.slice(0,10)}…`;
+        a.href = linkExplorer(`tx/${receipt.hash}`); a.target = "_blank"; a.rel = "noreferrer";
+        a.textContent = `View tx: ${receipt.hash.slice(0,10)}…`;
         el("link").prepend(a);
         await refreshReads();
       } catch (err) {
-      console.error(err);
-        const m = (err?.shortMessage || err?.message || "").toLowerCase();
-        if (err?.code === 4001) setStatus("User rejected the transaction.", "error");
-        else if (m.includes("incorrect eth") || m.includes("invalid msg.value"))
-          setStatus("Price updated just now—please try again (we’ll auto-requote).", "error");
-        else if (m.includes("insufficient funds"))
-          setStatus("Insufficient funds for price + gas.", "error");
-        else
-          setStatus("❌ " + (err?.shortMessage || err?.message || String(err)), "error");
-      } finally {
-        disableMint(false);
-      }
-    }
-
-    async function mintTo(){
-      if (!contract) return;
-      const list = parseAddresses(el("to").value);
-      if (!list.length) return setStatus("Enter at least one valid recipient address.", "error");
-
-      const claimNow = !!el("claimNow").checked;
-      if (claimNow && list.length > 1){
-        return setStatus("Claim-now is per recipient. Mint to one address at a time.", "error");
-      }
-
-      const shippingHash = shippingHashOrZero();
-      if (claimNow && !shippingHash) {
-        return setStatus("Please enter shipping info (required when claiming).", "error");
-      }
-
-      try{
-        disableMint(true);
-        let i = 0;
-        for (const addr of list){
-          setStatus(`Sending tx ${i+1}/${list.length}…`);
-          const tx = await mintOne(addr, claimNow, shippingHash);
-          setStatus(`Mining ${i+1}/${list.length}…`);
-          const receipt = await tx.wait();
-
-          const shippingText = claimNow ? canonicalShippingJson() : "";
-          await sendClaimEmail({
-            wallet: addr,
-            tokenId: "(unknown)",
-            txHash: receipt.hash,
-            claimNow,
-            shippingText,
-            shippingHash
-          });
-
-          const a = document.createElement("a");
-          a.href = linkPolygonscan(`tx/${receipt.hash}`); a.target = "_blank"; a.rel = "noreferrer"; a.textContent = `Tx ${i+1}: ${receipt.hash.slice(0,10)}…`;
-          el("link").prepend(a);
-          i++;
-        }
-        setStatus("✅ All mints confirmed", "ok");
-        await refreshReads();
-      } catch (err) {
         console.error(err);
         const m = (err?.shortMessage || err?.message || "").toLowerCase();
         if (err?.code === 4001) setStatus("User rejected the transaction.", "error");
-        else if (m.includes("incorrect eth") || m.includes("invalid msg.value"))
-          setStatus("Price updated just now—please try again (we’ll auto-requote).", "error");
-        else if (m.includes("insufficient funds"))
-          setStatus("Insufficient funds for price + gas.", "error");
-        else
-          setStatus("❌ " + (err?.shortMessage || err?.message || String(err)), "error");
-      } finally {
-        disableMint(false);
-      }
+        else if (m.includes("incorrect eth") || m.includes("invalid msg.value")) setStatus("Price updated — please try again (auto-requoting).", "error");
+        else if (m.includes("insufficient funds")) setStatus("Insufficient funds for price + gas.", "error");
+        else setStatus("❌ " + (err?.shortMessage || err?.message || String(err)), "error");
+      } finally { disableMint(false); }
     }
 
-    // Wire buttons + remember preference
+    // Wire buttons
     const remember = (k) => { try { localStorage.setItem("walletPref", k); } catch {} };
-    document.getElementById("connectAuto").addEventListener("click", () => { remember("auto"); connect("auto"); });
-    document.getElementById("connectBrave").addEventListener("click", () => { remember("brave"); connect("brave"); });
-    document.getElementById("connectMM").addEventListener("click", () => { remember("metamask"); connect("metamask"); });
-    document.getElementById("switchBtn").addEventListener("click", switchToPolygon);
+    document.getElementById("connectAuto").addEventListener("click",  () => { remember("auto");     connect("auto"); });
+    document.getElementById("connectBrave").addEventListener("click", () => { remember("brave");    connect("brave"); });
+    document.getElementById("connectMM").addEventListener("click",    () => { remember("metamask"); connect("metamask"); });
+    document.getElementById("switchBtn").addEventListener("click", switchToEthereum);
     document.getElementById("mintMeBtn").addEventListener("click", mintToMe);
-    document.getElementById("mintBtn").addEventListener("click", mintTo);
 
-    // Legacy direct connect (fallback)
-    document.getElementById("connectLegacy").addEventListener("click", async () => {
-      try {
-        const eth = window.ethereum;
-        if (!eth) { setStatus("No window.ethereum found.", "error"); return; }
-        await eth.request({ method: "eth_requestAccounts" });
-        provider = new ethers.BrowserProvider(eth);
-        signer = await provider.getSigner();
-        myAddr = await signer.getAddress();
-        el("address").textContent = `${myAddr.slice(0,6)}…${myAddr.slice(-4)}`;
+    el("claimNow").addEventListener("change", () => { el("claimNow").checked = true; });
 
-        const net = await provider.getNetwork();
-        const cid = Number(net.chainId);
-        const friendly = getChainNameFromId(cid, net.name);
-        el("network").textContent = `${friendly} (${cid})`;
-
-        if (cid !== 137) {
-          el("switchBtn").style.display = "inline-block";
-          setStatus("Wrong network. Click “Switch to Polygon”.", "error");
-          disableMint(true); return;
-        }
-        el("switchBtn").style.display = "none";
-
-        CONTRACT_ADDRESS = ethers.getAddress(RAW_CONTRACT_ADDRESS);
-        contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, signer);
-
-        ownerAddr = await contract.owner();
-        const isOwner = ownerAddr.toLowerCase() === myAddr.toLowerCase();
-        if (!isOwner){ setStatus("This page is owner-only mint. Your wallet is not the owner.", "error"); disableMint(true); }
-        else { setStatus(""); if (!el("to").value.trim()) el("to").value = myAddr; await refreshReads(); updateMintButtonsEnabled(); }
-      } catch (err) {
-        console.error(err);
-        setStatus(err?.shortMessage || err?.message || String(err), "error");
-      }
-    });
-
-    // Test Email (uses your current shipping field)
-    document.getElementById("testEmail").addEventListener("click", async () => {
-      const claim = !!el("claimNow").checked;
-      const text = (el("shipping").value || "").trim();
-      if (claim && !text) { setStatus("Enter shipping info first to test email (claim is on).", "error"); return; }
-      const canonical = claim ? JSON.stringify({ v: "1", text: text.replace(/\s+/g, " ") }) : "";
-      const hash = claim ? ethers.id(canonical) : ("0x" + "00".repeat(32));
-      await sendClaimEmail({
-        wallet: myAddr || "0xTEST",
-        tokenId: "TEST",
-        txHash: "0xdeadbeef",
-        claimNow: claim,
-        shippingText: canonical,
-        shippingHash: hash
-      });
-    });
-
-    // Auto-connect to last chosen wallet
+    // Auto-connect
     (function autoConnect() {
       const last = (() => { try { return localStorage.getItem("walletPref") } catch { return null } })();
       setTimeout(() => {
@@ -540,4 +780,3 @@
   </script>
 </body>
 </html>
-
