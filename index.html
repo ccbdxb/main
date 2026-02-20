@@ -295,7 +295,7 @@
         <div class="logo-icon"></div>
         <span class="logo-text">Mazement</span>
       </a>
-      <a href="/" class="back-link">← Back to site</a>
+      <a href="https://nft-mint-git-test-main-site-clinton-byrnes-projects.vercel.app/" class="back-link">← Back to site</a>
     </div>
   </header>
 
@@ -319,7 +319,7 @@
         <h1 class="page-title">Mint Your Maze</h1>
         <p class="page-subtitle">
           Connect your wallet, enter your shipping info, and mint. Every NFT includes a physical artwork redemption. 
-          <a href="/" target="_blank" rel="noopener">Learn more →</a>
+          <a href="https://nft-mint-git-test-main-site-clinton-byrnes-projects.vercel.app/" target="_blank" rel="noopener">Learn more →</a>
         </p>
       </div>
 
@@ -681,7 +681,7 @@
       if (!contract) return;
       try {
         const addr = myAddr || ethers.ZeroAddress;
-        const [mintedBN, maxSupplyBN, saleOpen, waveIdxBN, waveSizeBN, leftWaveBN, priceWeiArr, usdPriceRaw] = await Promise.all([
+        const [mintedBN, maxSupplyBN, saleOpen, waveIdxBN, waveSizeBN, leftWaveBN, priceWeiArr, releaseCap] = await Promise.all([
           contract.totalMinted().catch(()=>null),
           contract.MAX_SUPPLY().catch(()=>null),
           contract.saleActive().catch(()=>false),
@@ -689,23 +689,52 @@
           contract.WAVE_SIZE().catch(()=>null),
           contract.remainingInWave().catch(()=>null),
           contract.quoteNextMintPriceWeiFor(addr).catch(()=>null),
-          contract.usdMintPrice().catch(()=>null),
+          contract.releaseCap().catch(()=>null),
         ]);
 
-        const [priceWei] = priceWeiArr ?? [null];
-        const priceEl = el("priceMatic"); if (priceEl) priceEl.textContent = priceWei !== null ? formatEth(priceWei) : "—";
-        const usdEl   = el("priceUsd");  if (usdEl)   usdEl.textContent   = usdPriceRaw !== null ? formatUsd18(usdPriceRaw) : "—";
+        // priceWeiArr = [priceWei, tier]  tier: 0=full, 1=free, 2=discount
+        const priceWei = priceWeiArr?.[0] ?? null;
+        const tier     = priceWeiArr?.[1] ?? null;
 
-        const waveIdxHuman = waveIdxBN !== null ? (Number(waveIdxBN)+1).toString() : "—";
-        const totalWavesText = "∞";
+        // Show ETH price, but if tier is free override to FREE
+        const priceEl = el("priceMatic");
+        if (priceEl) {
+          if (tier !== null && Number(tier) === 1) {
+            priceEl.textContent = "FREE";
+          } else {
+            priceEl.textContent = priceWei !== null ? formatEth(priceWei) : "—";
+          }
+        }
 
-        if (el("waveIdx"))      el("waveIdx").textContent      = String(waveIdxHuman);
-        if (el("waveTotalCount")) el("waveTotalCount").textContent = totalWavesText;
-        if (el("waveLeft"))     el("waveLeft").textContent     = leftWaveBN !== null ? leftWaveBN.toString() : "—";
-        if (el("waveSize"))     el("waveSize").textContent     = waveSizeBN !== null ? waveSizeBN.toString() : "—";
-        if (el("supply"))       el("supply").textContent       = mintedBN !== null ? mintedBN.toString() : "—";
-        if (el("max"))          el("max").textContent          = maxSupplyBN !== null ? maxSupplyBN.toString() : "—";
-        if (el("left"))         el("left").textContent         = leftWaveBN !== null ? leftWaveBN.toString() : "—";
+        // Show USD equivalent, suppressed when free
+        const usdEl = el("priceUsd");
+        if (usdEl) {
+          if (tier !== null && Number(tier) === 1) {
+            usdEl.textContent = "";
+          } else if (priceWei !== null) {
+            // derive USD from the quoted ETH price using a rough on-chain rate if available
+            usdEl.textContent = "";  // leave blank — ETH price is the source of truth
+          } else {
+            usdEl.textContent = "—";
+          }
+        }
+
+        // Wave: waveId is 0-based on contract, display as 1-based
+        // Total waves = releaseCap tells us how many slots this wave has, not the total wave count
+        // Read totalWaves from MAX_SUPPLY / WAVE_SIZE if available
+        let totalWaves = "?";
+        if (maxSupplyBN !== null && waveSizeBN !== null && waveSizeBN > 0n) {
+          totalWaves = (maxSupplyBN / waveSizeBN).toString();
+        }
+        const waveIdxHuman = waveIdxBN !== null ? (Number(waveIdxBN) + 1).toString() : "—";
+
+        if (el("waveIdx"))        el("waveIdx").textContent        = waveIdxHuman;
+        if (el("waveTotalCount")) el("waveTotalCount").textContent = totalWaves;
+        if (el("waveLeft"))       el("waveLeft").textContent       = leftWaveBN !== null ? leftWaveBN.toString() : "—";
+        if (el("waveSize"))       el("waveSize").textContent       = waveSizeBN !== null ? waveSizeBN.toString() : "—";
+        if (el("supply"))         el("supply").textContent         = mintedBN !== null ? mintedBN.toString() : "—";
+        if (el("max"))            el("max").textContent            = maxSupplyBN !== null ? maxSupplyBN.toString() : "—";
+        if (el("left"))           el("left").textContent           = leftWaveBN !== null ? leftWaveBN.toString() : "—";
 
         if (!saleOpen) { setStatus("Sale is not active yet.", "error"); disableMint(true); }
         else { disableMint(false); }
