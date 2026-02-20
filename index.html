@@ -14,7 +14,7 @@
   <link rel="preload" as="image" href="images/mazement_0001.jpg" imagesrcset="images/mazement_0001.jpg 1x">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700;9..40,800&display=swap" rel="stylesheet">
 
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -35,7 +35,7 @@
     html { scroll-behavior: smooth; }
 
     body {
-      font-family: 'Syne', sans-serif;
+      font-family: 'DM Sans', sans-serif;
       background: var(--bg);
       color: var(--text);
       min-height: 100vh;
@@ -72,7 +72,7 @@
     }
 
     /* ── Wrapper ── */
-    .wrap { position: relative; z-index: 1; max-width: 1160px; margin: 0 auto; padding: 0 24px; }
+    .wrap { position: relative; z-index: 1; max-width: 1340px; margin: 0 auto; padding: 0 40px; }
 
     /* ────────────────────────────────
        HEADER
@@ -87,7 +87,7 @@
       z-index: 100;
     }
     .header-inner {
-      max-width: 1160px; margin: 0 auto; padding: 0 24px;
+      max-width: 1340px; margin: 0 auto; padding: 0 40px;
       display: flex; align-items: center; justify-content: space-between; gap: 16px;
     }
     .logo {
@@ -120,7 +120,7 @@
       display: inline-flex; align-items: center; gap: 8px;
       padding: 9px 20px; border-radius: 8px;
       background: var(--accent); color: #080a0f;
-      font-family: 'Syne', sans-serif; font-size: 0.85rem; font-weight: 700;
+      font-family: 'DM Sans', sans-serif; font-size: 0.85rem; font-weight: 700;
       letter-spacing: 0.04em; text-transform: uppercase;
       text-decoration: none; border: none; cursor: pointer;
       transition: opacity 0.2s, transform 0.15s, box-shadow 0.2s;
@@ -131,7 +131,7 @@
       display: inline-flex; align-items: center; gap: 6px;
       padding: 8px 16px; border-radius: 8px;
       border: 1px solid var(--border2); color: var(--text);
-      font-family: 'Syne', sans-serif; font-size: 0.85rem; font-weight: 600;
+      font-family: 'DM Sans', sans-serif; font-size: 0.85rem; font-weight: 600;
       letter-spacing: 0.04em; text-transform: uppercase;
       text-decoration: none; background: transparent; cursor: pointer;
       transition: border-color 0.2s, background 0.2s, transform 0.15s;
@@ -161,9 +161,10 @@
     @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.2} }
 
     h1 {
-      font-size: clamp(2rem, 4vw, 3.4rem);
-      font-weight: 800; line-height: 1.1;
+      font-size: clamp(2.2rem, 4.5vw, 3.8rem);
+      font-weight: 800; line-height: 1.18;
       letter-spacing: -0.02em;
+      padding-bottom: 0.1em; /* prevents descender clip on g, y, p */
     }
     .h1-accent { color: var(--accent); }
 
@@ -220,15 +221,16 @@
       font-size: 0.72rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;
       color: var(--accent); margin-bottom: 10px;
     }
-    h2 { font-size: clamp(1.5rem, 3vw, 2.2rem); font-weight: 800; letter-spacing: -0.02em; }
+    h2 { font-size: clamp(1.5rem, 3vw, 2.2rem); font-weight: 800; letter-spacing: -0.02em; line-height: 1.25; padding-bottom: 0.05em; }
 
     /* ────────────────────────────────
        ABOUT
     ──────────────────────────────── */
-    .about-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; }
+    .about-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: start; }
 
     .prose-block { display: flex; flex-direction: column; gap: 16px; }
     .prose-block p { color: var(--muted); line-height: 1.75; font-size: 0.95rem; }
+    .prose-block p:last-child { margin-bottom: 0; }
     .prose-block strong { color: var(--text); }
 
     .about-card {
@@ -313,7 +315,7 @@
       padding: 40px 0; margin-top: 40px;
     }
     .footer-inner {
-      max-width: 1160px; margin: 0 auto; padding: 0 24px;
+      max-width: 1340px; margin: 0 auto; padding: 0 40px;
       display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px;
     }
     .footer-left { font-size: 0.8rem; color: var(--muted); }
@@ -330,6 +332,9 @@
       .info-cards { grid-template-columns: 1fr; }
       nav a.nav-link { display: none; }
       h1 { font-size: 2rem; }
+      .wrap { padding: 0 20px; }
+      .header-inner { padding: 0 20px; }
+      .footer-inner { padding: 0 20px; }
     }
 
     @media (prefers-reduced-motion: reduce) { .carousel { scroll-behavior: auto; } }
@@ -420,52 +425,52 @@
     <div class="wrap">
       <div class="section-header">
         <div class="section-tag">The Story</div>
-        <h2>Mazement — Where mazes<br>meet meaning</h2>
+        <h2>Mazement — Where mazes meet meaning</h2>
       </div>
 
-      <div class="about-grid">
-        <div class="prose-block">
-          <p>Where digital mazes meet physical art — a phygital journey through creativity, logic, and chance.</p>
-          <p>A Byrne family collaboration between artist &amp; printmaker <strong>Ricky Byrne</strong> and programmer <strong>Clinton Byrne</strong>.</p>
-          <p>Mazement bridges the gap between physical and digital art — where each maze represents the human pursuit of goals: love, safety, meaning, adventure.</p>
-          <p>The mazes serve as a metaphor for our very human struggle to find that 'thing' we're working towards. Our need for goals is universal, our desire to reach them fundamentally human. It's no surprise the labyrinth — and later the maze — is a persistent feature of human culture and history.</p>
-          <p><strong>Digital precision meets human imperfection.</strong></p>
+      <!-- Story prose — full width -->
+      <div class="prose-block" style="max-width: 780px; margin-bottom: 40px;">
+        <p>Where digital mazes meet physical art — a phygital journey through creativity, logic, and chance.</p>
+        <p>A Byrne family collaboration between artist &amp; printmaker <strong>Ricky Byrne</strong> and programmer <strong>Clinton Byrne</strong>.</p>
+        <p>Mazement bridges the gap between physical and digital art — where each maze represents the human pursuit of goals: love, safety, meaning, adventure.</p>
+        <p>The mazes serve as a metaphor for our very human struggle to find that 'thing' we're working towards. Our need for goals is universal, our desire to reach them fundamentally human. It's no surprise the labyrinth — and later the maze — is a persistent feature of human culture and history.</p>
+        <p><strong>Digital precision meets human imperfection.</strong></p>
+      </div>
+
+      <!-- Minting experience + pricing side by side -->
+      <div class="about-grid" style="margin-bottom: 40px;">
+        <div class="about-card">
+          <div class="about-card-title">🎨 Minting Experience — Phygital Art</div>
+          <div class="prose-block">
+            <p>Every Mazement NFT minted comes with the opportunity to redeem a hand-crafted physical maze artwork, created by <a href="https://rbyrneart.com" target="_blank" rel="noopener">rbyrneart.com</a>.</p>
+            <p>Each design is produced in limited-edition batches of 10. Once a design's run is complete, a new maze is created for the next batch — ensuring continuous artistic evolution.</p>
+            <p>Once the mint window closes, the physical claim can no longer be made by secondary buyers — making this reward exclusive to original minters.</p>
+          </div>
         </div>
 
-        <div style="display: flex; flex-direction: column; gap: 20px;">
-          <div class="about-card">
-            <div class="about-card-title">🎨 Minting Experience — Phygital Art</div>
-            <div class="prose-block">
-              <p>Every Mazement NFT minted comes with the opportunity to redeem a hand-crafted physical maze artwork, created by <a href="https://rbyrneart.com" target="_blank" rel="noopener">rbyrneart.com</a>.</p>
-              <p>Each design is produced in limited-edition batches of 10. Once a design's run is complete, a new maze is created for the next batch — ensuring continuous artistic evolution.</p>
-              <p>Once the mint window closes, the physical claim can no longer be made by secondary buyers — making this reward exclusive to original minters.</p>
+        <div class="about-card">
+          <div class="about-card-title">⚡ Wave 1 Launch Pricing</div>
+          <div class="tier-list">
+            <div class="tier">
+              <span class="tier-range">#1 – 10</span>
+              <span class="tier-badge free">FREE (1 per wallet)</span>
+            </div>
+            <div class="tier">
+              <span class="tier-range">#11 – 30</span>
+              <span class="tier-badge disc">25% Discount</span>
+            </div>
+            <div class="tier">
+              <span class="tier-range">#31+</span>
+              <span class="tier-badge full">Full Price</span>
             </div>
           </div>
-
-          <div class="about-card">
-            <div class="about-card-title">⚡ Wave 1 Launch Pricing</div>
-            <div class="tier-list">
-              <div class="tier">
-                <span class="tier-range">#1 – 10</span>
-                <span class="tier-badge free">FREE (1 per wallet)</span>
-              </div>
-              <div class="tier">
-                <span class="tier-range">#11 – 30</span>
-                <span class="tier-badge disc">25% Discount</span>
-              </div>
-              <div class="tier">
-                <span class="tier-range">#31+</span>
-                <span class="tier-badge full">Full Price</span>
-              </div>
-            </div>
-            <div style="margin-top: 16px;">
-              <a class="btn-primary" href="https://mint.mazement-nft.com" target="_blank" rel="noopener">Mint Now →</a>
-            </div>
+          <div style="margin-top: 16px;">
+            <a class="btn-primary" href="https://mint.mazement-nft.com" target="_blank" rel="noopener">Mint Now →</a>
           </div>
         </div>
       </div>
 
-      <div class="info-cards" style="margin-top: 40px;">
+      <div class="info-cards">
         <div class="info-card">
           <div class="info-card-icon">🔒</div>
           <div class="info-card-title">Original Minters Only</div>
