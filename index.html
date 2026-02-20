@@ -187,8 +187,8 @@
 
     /* ── Mint form ── */
     .mint-form {
-      padding: 24px; border-radius: 16px;
-      border: 1px solid var(--border2); background: var(--surface);
+      padding: 24px; border-radius: 16px 16px 0 0;
+      border: 1px solid var(--border2); border-bottom: none; background: var(--surface);
     }
     .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
     .form-group { display: flex; flex-direction: column; gap: 8px; }
@@ -244,20 +244,30 @@
 
     /* ── Rules ── */
     .rules-box {
-      padding: 20px 24px; border-radius: 14px;
-      border: 1px solid var(--border); background: var(--surface);
+      padding: 16px 18px; border-radius: 14px;
+      border: 1px solid var(--border2); background: var(--surface);
     }
-    .rules-title { font-size: 0.85rem; font-weight: 700; margin-bottom: 14px; }
-    .rules-list { display: flex; flex-direction: column; gap: 10px; list-style: none; }
+    .rules-title {
+      font-size: 0.7rem; font-weight: 700; letter-spacing: 0.1em;
+      text-transform: uppercase; color: var(--accent);
+      margin-bottom: 12px;
+    }
+    .rules-list { display: flex; flex-direction: column; gap: 0; list-style: none; }
     .rules-list li {
       display: flex; align-items: flex-start; gap: 10px;
-      font-size: 0.83rem; color: var(--muted); line-height: 1.5;
+      padding: 9px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.8rem; line-height: 1.4;
     }
-    .rules-list li::before {
-      content: '✓'; color: var(--accent); font-weight: 700;
-      flex-shrink: 0; margin-top: 1px;
+    .rules-list li:last-child { border-bottom: none; padding-bottom: 0; }
+    .rules-list li:first-child { padding-top: 0; }
+    .rules-icon {
+      font-size: 0.85rem; flex-shrink: 0; margin-top: 1px;
+      width: 18px; text-align: center;
     }
-    .rules-list li strong { color: var(--text); }
+    .rules-content { display: flex; flex-direction: column; gap: 1px; }
+    .rules-headline { font-weight: 700; color: var(--text); font-size: 0.8rem; }
+    .rules-detail { color: var(--muted); font-size: 0.73rem; line-height: 1.4; }
 
     /* ── Switch button ── */
     #switchBtn {
@@ -310,6 +320,8 @@
       <div class="security-note">
         <strong>🔒 Stay Safe:</strong> We will <strong>never</strong> ask for your seed phrase, passwords, or private keys. Only interact via your wallet extension.
       </div>
+
+      <!-- How This Drop Works moved here -->
     </aside>
 
     <!-- Right: mint UI -->
@@ -398,24 +410,60 @@
 
         <button class="btn-primary" id="mintMeBtn" disabled>Mint to My Wallet</button>
         <div class="hint" style="margin-top:10px;">Each mint uses the current quoted price. The exact <code style="font-family:Space Mono,monospace;font-size:0.75rem">msg.value</code> is sent automatically.</div>
-      </div>
 
-      <!-- Status -->
-      <div class="status-area">
-        <p id="status" class="muted" style="min-height:22px;"></p>
-        <div id="link" style="min-height:22px;"></div>
+        <!-- Status -->
+        <div class="status-area" style="margin-top:14px;">
+          <p id="status" class="muted" style="min-height:22px;"></p>
+          <div id="link" style="min-height:22px;"></div>
+        </div>
       </div>
 
       <!-- Rules -->
-      <div class="rules-box">
+      <div class="rules-box" style="margin-top:0; border-top:none; border-radius: 0 0 16px 16px;">
         <p class="rules-title">How This Drop Works</p>
         <ul class="rules-list">
-          <li>First <strong>10 wallets</strong> get <strong>one free mint</strong> — gas still applies. Wave 1 only.</li>
-          <li>Max <strong>2 mints per wallet</strong> per wave to keep it fair.</li>
-          <li><strong>25% discount</strong> on second mint when supply is below 30. Wave 1 only.</li>
-          <li><strong>Art reveals after minting</strong> — each maze is uniquely generated.</li>
-          <li><strong>One physical artwork per mint</strong> — we collect your shipping here.</li>
-          <li>We will <strong>never</strong> ask for your seed phrase, passwords, or keys.</li>
+          <li>
+            <span class="rules-icon">🎁</span>
+            <div class="rules-content">
+              <span class="rules-headline">Free first mint</span>
+              <span class="rules-detail">First 10 wallets mint free. Gas still applies. Wave 1 only.</span>
+            </div>
+          </li>
+          <li>
+            <span class="rules-icon">⚖️</span>
+            <div class="rules-content">
+              <span class="rules-headline">2 mints per wallet</span>
+              <span class="rules-detail">Per wave, to keep the drop fair.</span>
+            </div>
+          </li>
+          <li>
+            <span class="rules-icon">💸</span>
+            <div class="rules-content">
+              <span class="rules-headline">25% second-mint discount</span>
+              <span class="rules-detail">When supply is below 30. Wave 1 only.</span>
+            </div>
+          </li>
+          <li>
+            <span class="rules-icon">🌀</span>
+            <div class="rules-content">
+              <span class="rules-headline">Art reveals after mint</span>
+              <span class="rules-detail">Each maze is uniquely generated on reveal.</span>
+            </div>
+          </li>
+          <li>
+            <span class="rules-icon">📦</span>
+            <div class="rules-content">
+              <span class="rules-headline">Physical art included</span>
+              <span class="rules-detail">One physical per mint. Shipping collected here.</span>
+            </div>
+          </li>
+          <li>
+            <span class="rules-icon">🔒</span>
+            <div class="rules-content">
+              <span class="rules-headline">Your keys stay yours</span>
+              <span class="rules-detail">We never ask for seed phrases or passwords.</span>
+            </div>
+          </li>
         </ul>
       </div>
     </main>
