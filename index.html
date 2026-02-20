@@ -1,0 +1,694 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Mazement — Generative NFT Mazes with Physical Redemption</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="Mazement is a phygital art project: generative NFT mazes on Ethereum with a one-time physical redemption at mint. Explore the story and mint now." />
+  <meta property="og:title" content="Mazement — Phygital Generative Mazes">
+  <meta property="og:description" content="Generative NFT mazes on Ethereum + a handcrafted physical redemption at mint time only." />
+  <meta property="og:type" content="website" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <link rel="canonical" href="https://mazement-nft.com/" />
+  <link rel="preconnect" href="https://gateway.pinata.cloud" crossorigin>
+  <link rel="preload" as="image" href="images/mazement_0001.jpg" imagesrcset="images/mazement_0001.jpg 1x">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #080a0f;
+      --surface:   #0d1018;
+      --surface2:  #111520;
+      --border:    rgba(255,255,255,0.07);
+      --border2:   rgba(255,255,255,0.12);
+      --text:      #e8edf5;
+      --muted:     #6b7a96;
+      --accent:    #00e5ff;
+      --accent2:   #7b61ff;
+      --gold:      #f5c842;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Syne', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── Grid texture overlay ── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(0,229,255,0.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,229,255,0.025) 1px, transparent 1px);
+      background-size: 48px 48px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ── Radial glow spots ── */
+    .glow-top {
+      position: fixed;
+      top: -200px; left: -200px;
+      width: 600px; height: 600px;
+      background: radial-gradient(circle, rgba(0,229,255,0.06) 0%, transparent 70%);
+      pointer-events: none; z-index: 0;
+    }
+    .glow-mid {
+      position: fixed;
+      top: 40%; right: -150px;
+      width: 500px; height: 500px;
+      background: radial-gradient(circle, rgba(123,97,255,0.07) 0%, transparent 70%);
+      pointer-events: none; z-index: 0;
+    }
+
+    /* ── Wrapper ── */
+    .wrap { position: relative; z-index: 1; max-width: 1160px; margin: 0 auto; padding: 0 24px; }
+
+    /* ────────────────────────────────
+       HEADER
+    ──────────────────────────────── */
+    header {
+      padding: 20px 0;
+      position: sticky; top: 0;
+      backdrop-filter: blur(20px) saturate(180%);
+      -webkit-backdrop-filter: blur(20px) saturate(180%);
+      background: rgba(8,10,15,0.82);
+      border-bottom: 1px solid var(--border);
+      z-index: 100;
+    }
+    .header-inner {
+      max-width: 1160px; margin: 0 auto; padding: 0 24px;
+      display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    }
+    .logo {
+      display: flex; align-items: center; gap: 10px;
+      text-decoration: none; color: var(--text);
+    }
+    .logo-icon {
+      width: 36px; height: 36px;
+      background: var(--accent);
+      clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+      position: relative;
+      animation: pulse-icon 4s ease-in-out infinite;
+    }
+    @keyframes pulse-icon {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(0,229,255,0.3); }
+      50%       { box-shadow: 0 0 20px 6px rgba(0,229,255,0.15); }
+    }
+    .logo-text { font-size: 1.1rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
+
+    nav { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    nav a.nav-link {
+      color: var(--muted); text-decoration: none;
+      font-size: 0.85rem; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase;
+      padding: 6px 12px; border-radius: 6px;
+      transition: color 0.2s, background 0.2s;
+    }
+    nav a.nav-link:hover { color: var(--text); background: rgba(255,255,255,0.05); }
+
+    .btn-primary {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 9px 20px; border-radius: 8px;
+      background: var(--accent); color: #080a0f;
+      font-family: 'Syne', sans-serif; font-size: 0.85rem; font-weight: 700;
+      letter-spacing: 0.04em; text-transform: uppercase;
+      text-decoration: none; border: none; cursor: pointer;
+      transition: opacity 0.2s, transform 0.15s, box-shadow 0.2s;
+    }
+    .btn-primary:hover { opacity: 0.88; transform: translateY(-1px); box-shadow: 0 6px 24px rgba(0,229,255,0.25); }
+
+    .btn-ghost {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 8px 16px; border-radius: 8px;
+      border: 1px solid var(--border2); color: var(--text);
+      font-family: 'Syne', sans-serif; font-size: 0.85rem; font-weight: 600;
+      letter-spacing: 0.04em; text-transform: uppercase;
+      text-decoration: none; background: transparent; cursor: pointer;
+      transition: border-color 0.2s, background 0.2s, transform 0.15s;
+    }
+    .btn-ghost:hover { border-color: var(--accent); background: rgba(0,229,255,0.05); transform: translateY(-1px); }
+    .btn-ghost svg { width: 16px; height: 16px; }
+
+    /* ────────────────────────────────
+       HERO
+    ──────────────────────────────── */
+    .hero { padding: 72px 0 56px; }
+    .hero-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 48px; align-items: center; }
+
+    .hero-tag {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 5px 12px; border-radius: 999px;
+      border: 1px solid rgba(0,229,255,0.3);
+      background: rgba(0,229,255,0.05);
+      font-size: 0.75rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+      color: var(--accent); margin-bottom: 20px;
+    }
+    .hero-tag::before {
+      content: ''; width: 6px; height: 6px; border-radius: 50%;
+      background: var(--accent);
+      animation: blink 2s ease-in-out infinite;
+    }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.2} }
+
+    h1 {
+      font-size: clamp(2rem, 4vw, 3.4rem);
+      font-weight: 800; line-height: 1.1;
+      letter-spacing: -0.02em;
+    }
+    .h1-accent { color: var(--accent); }
+
+    .hero-sub {
+      margin-top: 18px; color: var(--muted);
+      font-size: 1rem; line-height: 1.7; max-width: 480px;
+    }
+
+    .hero-actions { display: flex; align-items: center; gap: 12px; margin-top: 32px; flex-wrap: wrap; }
+
+    /* Carousel */
+    .carousel-wrap {
+      position: relative; border-radius: 16px; overflow: hidden;
+      border: 1px solid var(--border2);
+      box-shadow: 0 0 60px rgba(0,229,255,0.06);
+    }
+    .carousel { display: grid; grid-auto-flow: column; grid-auto-columns: 100%; overflow-x: auto; scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+    .carousel::-webkit-scrollbar { display: none; }
+    .slide { scroll-snap-align: start; }
+    .slide img { width: 100%; height: 420px; object-fit: contain; display: block; background: #0b0e15; }
+
+    .carousel-dots {
+      display: flex; justify-content: center; gap: 6px;
+      position: absolute; bottom: 12px; left: 0; right: 0;
+    }
+    .dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: rgba(255,255,255,0.25);
+      transition: background 0.3s, width 0.3s;
+    }
+    .dot.active { background: var(--accent); width: 20px; border-radius: 3px; }
+
+    /* Stats bar */
+    .stats-bar {
+      display: grid; grid-template-columns: repeat(3, 1fr);
+      gap: 1px; background: var(--border);
+      border: 1px solid var(--border); border-radius: 14px;
+      overflow: hidden; margin-top: 40px;
+    }
+    .stat {
+      padding: 20px 24px; background: var(--surface);
+      display: flex; flex-direction: column; gap: 4px;
+    }
+    .stat-val { font-size: 1.6rem; font-weight: 800; color: var(--text); }
+    .stat-val span { color: var(--accent); }
+    .stat-label { font-size: 0.75rem; font-weight: 600; color: var(--muted); letter-spacing: 0.06em; text-transform: uppercase; }
+
+    /* ────────────────────────────────
+       SECTION SHARED
+    ──────────────────────────────── */
+    section { padding: 80px 0; }
+    .section-header { margin-bottom: 40px; }
+    .section-tag {
+      font-size: 0.72rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;
+      color: var(--accent); margin-bottom: 10px;
+    }
+    h2 { font-size: clamp(1.5rem, 3vw, 2.2rem); font-weight: 800; letter-spacing: -0.02em; }
+
+    /* ────────────────────────────────
+       ABOUT
+    ──────────────────────────────── */
+    .about-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; }
+
+    .prose-block { display: flex; flex-direction: column; gap: 16px; }
+    .prose-block p { color: var(--muted); line-height: 1.75; font-size: 0.95rem; }
+    .prose-block strong { color: var(--text); }
+
+    .about-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 16px; padding: 28px;
+    }
+    .about-card-title { font-size: 1rem; font-weight: 700; margin-bottom: 14px; color: var(--text); }
+
+    /* Promo tiers */
+    .tier-list { display: flex; flex-direction: column; gap: 10px; margin-top: 16px; }
+    .tier {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 16px; border-radius: 10px;
+      background: var(--surface2); border: 1px solid var(--border);
+    }
+    .tier-range { font-family: 'Space Mono', monospace; font-size: 0.85rem; color: var(--muted); }
+    .tier-badge {
+      font-size: 0.75rem; font-weight: 700; padding: 4px 10px; border-radius: 999px;
+      letter-spacing: 0.06em; text-transform: uppercase;
+    }
+    .tier-badge.free   { background: rgba(0,229,255,0.12); color: var(--accent); border: 1px solid rgba(0,229,255,0.3); }
+    .tier-badge.disc   { background: rgba(245,200,66,0.12); color: var(--gold); border: 1px solid rgba(245,200,66,0.3); }
+    .tier-badge.full   { background: rgba(255,255,255,0.05); color: var(--muted); border: 1px solid var(--border); }
+
+    /* Info cards */
+    .info-cards { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-top: 24px; }
+    .info-card {
+      padding: 20px; border-radius: 12px;
+      background: var(--surface2); border: 1px solid var(--border);
+    }
+    .info-card-icon { font-size: 1.3rem; margin-bottom: 10px; }
+    .info-card-title { font-size: 0.85rem; font-weight: 700; margin-bottom: 6px; }
+    .info-card-body  { font-size: 0.8rem; color: var(--muted); line-height: 1.6; }
+
+    /* ────────────────────────────────
+       CONTRACT
+    ──────────────────────────────── */
+    #contract { padding: 40px 0; }
+    .contract-box {
+      background: var(--surface); border: 1px solid var(--border2);
+      border-radius: 16px; padding: 28px;
+      display: flex; flex-wrap: wrap; align-items: center; gap: 16px;
+      justify-content: space-between;
+    }
+    .contract-left { display: flex; flex-direction: column; gap: 6px; }
+    .contract-label { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+    .contract-addr { font-family: 'Space Mono', monospace; font-size: 0.8rem; color: var(--accent); word-break: break-all; }
+    .contract-links { display: flex; gap: 10px; flex-wrap: wrap; }
+
+    /* ────────────────────────────────
+       MINTED TABLE
+    ──────────────────────────────── */
+    #minted { padding-top: 0; }
+    .table-wrap {
+      border: 1px solid var(--border); border-radius: 14px;
+      overflow: hidden; overflow-x: auto;
+    }
+    table { border-collapse: collapse; width: 100%; }
+    thead { background: var(--surface); }
+    th {
+      padding: 12px 16px; text-align: left;
+      font-size: 0.72rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+      color: var(--muted); border-bottom: 1px solid var(--border);
+    }
+    td { padding: 12px 16px; font-size: 0.8rem; border-bottom: 1px solid var(--border); vertical-align: middle; }
+    tbody tr:last-child td { border-bottom: none; }
+    tbody tr { background: var(--surface); transition: background 0.15s; }
+    tbody tr:nth-child(even) { background: var(--surface2); }
+    tbody tr:hover { background: rgba(0,229,255,0.04); }
+
+    .meta-cid {
+      font-family: 'Space Mono', monospace; font-size: 0.72rem;
+      color: var(--muted); margin-bottom: 20px;
+    }
+    .meta-cid span { color: var(--accent); }
+
+    /* ────────────────────────────────
+       FOOTER
+    ──────────────────────────────── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 40px 0; margin-top: 40px;
+    }
+    .footer-inner {
+      max-width: 1160px; margin: 0 auto; padding: 0 24px;
+      display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px;
+    }
+    .footer-left { font-size: 0.8rem; color: var(--muted); }
+    .footer-right { display: flex; gap: 16px; align-items: center; }
+    .footer-link { color: var(--muted); text-decoration: none; font-size: 0.8rem; transition: color 0.2s; }
+    .footer-link:hover { color: var(--accent); }
+
+    /* ────────────────────────────────
+       RESPONSIVE
+    ──────────────────────────────── */
+    @media (max-width: 768px) {
+      .hero-grid, .about-grid { grid-template-columns: 1fr; }
+      .stats-bar { grid-template-columns: 1fr; }
+      .info-cards { grid-template-columns: 1fr; }
+      nav a.nav-link { display: none; }
+      h1 { font-size: 2rem; }
+    }
+
+    @media (prefers-reduced-motion: reduce) { .carousel { scroll-behavior: auto; } }
+
+    /* ── Link styles in prose ── */
+    .prose-block a { color: var(--accent); text-decoration: none; }
+    .prose-block a:hover { text-decoration: underline; }
+
+    /* ── Selection ── */
+    ::selection { background: rgba(0,229,255,0.25); color: var(--text); }
+  </style>
+</head>
+<body>
+  <div class="glow-top"></div>
+  <div class="glow-mid"></div>
+
+  <!-- Header -->
+  <header>
+    <div class="header-inner">
+      <a href="/" class="logo">
+        <div class="logo-icon"></div>
+        <span class="logo-text">Mazement</span>
+      </a>
+      <nav>
+        <a href="#about"    class="nav-link">About</a>
+        <a href="#contract" class="nav-link">Contract</a>
+        <a href="#minted"   class="nav-link">Minted</a>
+        <a href="https://discord.gg/DumGSd2vxw" class="btn-ghost" target="_blank" rel="noopener" aria-label="Join Discord">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 127.14 96.36" aria-hidden="true">
+            <path fill="currentColor" d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.9,97.68,97.68,0,0,0-28.1,0A72,72,0,0,0,46.65,0,105.89,105.89,0,0,0,20.39,8.09C2.93,33.6-1.85,58.54.57,83.21A105.73,105.73,0,0,0,32.9,96.36a77.7,77.7,0,0,0,6.64-10.77,68.42,68.42,0,0,1-10.47-5.06c.88-.64,1.73-1.31,2.55-2,20,9.41,41.7,9.41,61.52,0,.83.71,1.68,1.38,2.55,2a68.68,68.68,0,0,1-10.49,5.07,77,77,0,0,0,6.66,10.76A105.4,105.4,0,0,0,126.57,83.2C129.44,53.72,121.39,29.06,107.7,8.07ZM42.45,65.69C36.73,65.69,32,60.51,32,54s4.6-11.73,10.43-11.73S52.9,47.49,52.9,54,48.2,65.69,42.45,65.69Zm42.29,0C78.94,65.69,74.24,60.51,74.24,54S78.84,42.26,84.74,42.26,95.16,47.49,95.16,54,90.46,65.69,84.74,65.69Z"/>
+          </svg>
+          Discord
+        </a>
+        <a href="https://mint.mazement-nft.com" class="btn-primary" target="_blank" rel="noopener">Mint Now</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Hero -->
+  <section class="hero">
+    <div class="wrap">
+      <div class="hero-grid">
+        <div>
+          <div class="hero-tag">Phygital NFT Drop on Ethereum</div>
+          <h1>Generative<br>mazes.<br><span class="h1-accent">Physical art.</span></h1>
+          <p class="hero-sub">Mint your Mazement NFT on Ethereum, then redeem a handcrafted physical maze — available at mint time only.</p>
+          <div class="hero-actions">
+            <a class="btn-primary" href="https://mint.mazement-nft.com" target="_blank" rel="noopener">Go to Mint</a>
+            <a class="btn-ghost" href="https://rbyrneart.com/collections/mazes" target="_blank" rel="noopener">Physical Art</a>
+            <a class="btn-ghost" href="#about">Learn More</a>
+          </div>
+        </div>
+
+        <div>
+          <div class="carousel-wrap">
+            <div class="carousel" id="carousel" aria-label="Mazement artwork carousel">
+              <div class="slide"><img src="images/mazement_0001.jpg" alt="Mazement artwork 1" loading="eager" decoding="async"></div>
+              <div class="slide"><img src="images/mazement_0002.jpg" alt="Mazement artwork 2" loading="lazy" decoding="async"></div>
+              <div class="slide"><img src="images/mazement_0003.jpg" alt="Mazement artwork 3" loading="lazy" decoding="async"></div>
+              <div class="slide"><img src="images/mazement_0004.jpg" alt="Mazement artwork 4" loading="lazy" decoding="async"></div>
+              <div class="slide"><img src="images/mazement_0005.jpg" alt="Mazement artwork 5" loading="lazy" decoding="async"></div>
+              <div class="slide"><img src="images/mazement_0006.jpg" alt="Mazement artwork 6" loading="lazy" decoding="async"></div>
+            </div>
+            <div class="carousel-dots" id="dots"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="stats-bar">
+        <div class="stat">
+          <div class="stat-val"><span>10</span> Free</div>
+          <div class="stat-label">First 10 wallets</div>
+        </div>
+        <div class="stat">
+          <div class="stat-val"><span>25%</span> Off</div>
+          <div class="stat-label">Mints #11–30</div>
+        </div>
+        <div class="stat">
+          <div class="stat-val"><span>1</span> Physical</div>
+          <div class="stat-label">Per mint</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- About -->
+  <section id="about">
+    <div class="wrap">
+      <div class="section-header">
+        <div class="section-tag">The Story</div>
+        <h2>Mazement — Where mazes<br>meet meaning</h2>
+      </div>
+
+      <div class="about-grid">
+        <div class="prose-block">
+          <p>Where digital mazes meet physical art — a phygital journey through creativity, logic, and chance.</p>
+          <p>A Byrne family collaboration between artist &amp; printmaker <strong>Ricky Byrne</strong> and programmer <strong>Clinton Byrne</strong>.</p>
+          <p>Mazement bridges the gap between physical and digital art — where each maze represents the human pursuit of goals: love, safety, meaning, adventure.</p>
+          <p>The mazes serve as a metaphor for our very human struggle to find that 'thing' we're working towards. Our need for goals is universal, our desire to reach them fundamentally human. It's no surprise the labyrinth — and later the maze — is a persistent feature of human culture and history.</p>
+          <p><strong>Digital precision meets human imperfection.</strong></p>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 20px;">
+          <div class="about-card">
+            <div class="about-card-title">🎨 Minting Experience — Phygital Art</div>
+            <div class="prose-block">
+              <p>Every Mazement NFT minted comes with the opportunity to redeem a hand-crafted physical maze artwork, created by <a href="https://rbyrneart.com" target="_blank" rel="noopener">rbyrneart.com</a>.</p>
+              <p>Each design is produced in limited-edition batches of 10. Once a design's run is complete, a new maze is created for the next batch — ensuring continuous artistic evolution.</p>
+              <p>Once the mint window closes, the physical claim can no longer be made by secondary buyers — making this reward exclusive to original minters.</p>
+            </div>
+          </div>
+
+          <div class="about-card">
+            <div class="about-card-title">⚡ Wave 1 Launch Pricing</div>
+            <div class="tier-list">
+              <div class="tier">
+                <span class="tier-range">#1 – 10</span>
+                <span class="tier-badge free">FREE (1 per wallet)</span>
+              </div>
+              <div class="tier">
+                <span class="tier-range">#11 – 30</span>
+                <span class="tier-badge disc">25% Discount</span>
+              </div>
+              <div class="tier">
+                <span class="tier-range">#31+</span>
+                <span class="tier-badge full">Full Price</span>
+              </div>
+            </div>
+            <div style="margin-top: 16px;">
+              <a class="btn-primary" href="https://mint.mazement-nft.com" target="_blank" rel="noopener">Mint Now →</a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="info-cards" style="margin-top: 40px;">
+        <div class="info-card">
+          <div class="info-card-icon">🔒</div>
+          <div class="info-card-title">Original Minters Only</div>
+          <div class="info-card-body">The physical redemption is exclusively available to original minters during the active mint window. Secondary buyers cannot claim.</div>
+        </div>
+        <div class="info-card">
+          <div class="info-card-icon">🧩</div>
+          <div class="info-card-title">Limited Editions</div>
+          <div class="info-card-body">Physical art ships in batches of 10 unique designs. Each batch is distinct — no two collections are the same.</div>
+        </div>
+        <div class="info-card">
+          <div class="info-card-icon">⛓️</div>
+          <div class="info-card-title">On-Chain, Forever</div>
+          <div class="info-card-body">Your NFT lives on Ethereum. Metadata is pinned via IPFS ensuring your piece endures beyond any single platform.</div>
+        </div>
+        <div class="info-card">
+          <div class="info-card-icon">🔍</div>
+          <div class="info-card-title">Post-Mint Reveal</div>
+          <div class="info-card-body">Art reveals after minting. Each maze is algorithmically generated — unique to your token, never repeated.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Contract -->
+  <section id="contract" style="padding: 0 0 60px;">
+    <div class="wrap">
+      <div class="section-header">
+        <div class="section-tag">Transparency</div>
+        <h2>Smart Contract</h2>
+      </div>
+      <div class="contract-box">
+        <div class="contract-left">
+          <div class="contract-label">Contract Address (Ethereum Mainnet)</div>
+          <code id="addr" class="contract-addr">0xa58bB81b1B3D96dD42e231E3fC49C29Be69F1E11</code>
+        </div>
+        <div class="contract-links">
+          <button class="btn-ghost" id="copyBtn" aria-label="Copy contract address">Copy Address</button>
+          <span class="sr-only" aria-live="polite" id="copyLive"></span>
+          <a class="btn-ghost" target="_blank" rel="noopener" href="https://opensea.io/collection/mazement">OpenSea</a>
+          <a class="btn-ghost" target="_blank" rel="noopener" href="https://etherscan.io/address/0xa58bB81b1B3D96dD42e231E3fC49C29Be69F1E11">Etherscan</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Minted -->
+  <section id="minted" style="padding: 0 0 80px;">
+    <div class="wrap">
+      <div class="section-header">
+        <div class="section-tag">On-Chain</div>
+        <h2>Minted Tokens</h2>
+      </div>
+      <p class="meta-cid">Metadata CID: <span>bafybeib7lfcr3t3iajayuh2cimji5annziwwg2jy27xstu7vztajdsyjfm</span></p>
+      <div class="table-wrap">
+        <table id="tokensTable">
+          <thead>
+            <tr>
+              <th style="width:80px">Token</th>
+              <th>Metadata (ipfs://)</th>
+              <th>Gateway Link</th>
+              <th>Image</th>
+              <th style="width:110px">Preview</th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="footer-inner">
+      <div class="footer-left">© <span id="year"></span> Mazement. All rights reserved.</div>
+      <div class="footer-right">
+        <a href="https://discord.gg/DumGSd2vxw" class="footer-link" target="_blank" rel="noopener">Discord</a>
+        <a href="https://opensea.io/collection/mazement" class="footer-link" target="_blank" rel="noopener">OpenSea</a>
+        <a href="https://rbyrneart.com" class="footer-link" target="_blank" rel="noopener">Physical Art</a>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // ── Copy address ──
+    document.getElementById('copyBtn').addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(document.getElementById('addr').textContent.trim());
+        const b = document.getElementById('copyBtn');
+        const live = document.getElementById('copyLive');
+        const old = b.textContent;
+        b.textContent = 'Copied!';
+        live.textContent = 'Contract address copied to clipboard';
+        setTimeout(() => { b.textContent = old; live.textContent = ''; }, 1400);
+      } catch {}
+    });
+    document.getElementById('year').textContent = new Date().getFullYear();
+
+    // ── Minted table ──
+    const META_CID = 'bafybeib7lfcr3t3iajayuh2cimji5annziwwg2jy27xstu7vztajdsyjfm';
+    const TOKENS = [
+      { id: 1, file: 'mazement_0001.json' },
+      { id: 2, file: 'mazement_0002.json' },
+    ];
+    const GATEWAY = 'https://gateway.pinata.cloud/ipfs/';
+    const tbody = document.getElementById('tbody');
+    const ipfsUrl = (cid, path) => `ipfs://${cid}/${path}`;
+    const gatewayUrl = (cid, path) => `${GATEWAY}${cid}/${path}`;
+
+    async function getImageUrlFromJson(jsonUrl) {
+      try {
+        const res = await fetch(jsonUrl, { cache: 'no-store' });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const j = await res.json();
+        let img = j.image || j.image_url || '';
+        if (!img) return '';
+        if (img.startsWith('ipfs://')) return GATEWAY + img.slice(7);
+        return img;
+      } catch { return ''; }
+    }
+
+    (async function render() {
+      for (const { id, file } of TOKENS) {
+        const tr = document.createElement('tr');
+        const tdId = document.createElement('td');
+        tdId.textContent = '#' + id;
+
+        const tdMeta = document.createElement('td');
+        const metaCode = document.createElement('code');
+        metaCode.style.cssText = 'font-family:Space Mono,monospace;font-size:0.72rem;color:#6b7a96;word-break:break-all';
+        metaCode.textContent = ipfsUrl(META_CID, file);
+        tdMeta.appendChild(metaCode);
+
+        const tdLink = document.createElement('td');
+        const a = document.createElement('a');
+        a.style.cssText = 'color:#00e5ff;text-decoration:none;font-family:Space Mono,monospace;font-size:0.72rem;word-break:break-all';
+        a.onmouseover = () => a.style.textDecoration = 'underline';
+        a.onmouseout  = () => a.style.textDecoration = 'none';
+        const metaHttp = gatewayUrl(META_CID, file);
+        a.href = metaHttp; a.target = '_blank'; a.rel = 'noopener';
+        a.textContent = metaHttp;
+        tdLink.appendChild(a);
+
+        const tdImage = document.createElement('td');
+        const derivedImgUrl = await getImageUrlFromJson(metaHttp);
+        if (derivedImgUrl) {
+          const imageA = document.createElement('a');
+          imageA.style.cssText = 'color:#00e5ff;text-decoration:none;font-family:Space Mono,monospace;font-size:0.72rem;word-break:break-all';
+          imageA.href = derivedImgUrl; imageA.target = '_blank'; imageA.rel = 'noopener';
+          imageA.textContent = derivedImgUrl;
+          tdImage.appendChild(imageA);
+        } else { tdImage.textContent = '—'; }
+
+        const tdPrev = document.createElement('td');
+        if (derivedImgUrl) {
+          const img = document.createElement('img');
+          img.src = derivedImgUrl;
+          img.alt = `Token ${id} preview`;
+          img.loading = 'lazy'; img.decoding = 'async';
+          img.style.cssText = 'width:80px;height:80px;object-fit:cover;border-radius:8px;border:1px solid rgba(255,255,255,0.07)';
+          tdPrev.appendChild(img);
+        } else { tdPrev.textContent = '—'; }
+
+        tr.append(tdId, tdMeta, tdLink, tdImage, tdPrev);
+        tbody.appendChild(tr);
+      }
+    })();
+
+    // ── Carousel with dots ──
+    (function () {
+      const AUTOPLAY = true;
+      const INTERVAL_MS = 30000;
+      const PAUSE_AFTER_INTERACT = 4500;
+
+      const el = document.getElementById('carousel');
+      const dotsWrap = document.getElementById('dots');
+      if (!el) return;
+
+      const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const slides = Array.from(el.querySelectorAll('.slide'));
+      let i = 0, timer = null;
+
+      // Build dots
+      slides.forEach((_, idx) => {
+        const d = document.createElement('div');
+        d.className = 'dot' + (idx === 0 ? ' active' : '');
+        d.addEventListener('click', () => go(idx));
+        dotsWrap.appendChild(d);
+      });
+
+      function updateDots() {
+        dotsWrap.querySelectorAll('.dot').forEach((d, idx) => d.classList.toggle('active', idx === i));
+      }
+
+      function currentIndex() {
+        const left = el.scrollLeft;
+        let best = 0, bestDist = Infinity;
+        slides.forEach((s, idx) => {
+          const dist = Math.abs(s.offsetLeft - left);
+          if (dist < bestDist) { bestDist = dist; best = idx; }
+        });
+        return best;
+      }
+
+      function go(idx, smooth = true) {
+        i = (idx + slides.length) % slides.length;
+        el.scrollTo({ left: slides[i].offsetLeft, behavior: smooth ? 'smooth' : 'auto' });
+        updateDots();
+      }
+
+      function stop()  { if (timer) { clearInterval(timer); timer = null; } }
+      function start() { if (!AUTOPLAY || prefersReduced) return; stop(); timer = setInterval(() => go(i + 1), INTERVAL_MS); }
+      function poke()  { stop(); setTimeout(start, PAUSE_AFTER_INTERACT); }
+
+      ['mouseenter', 'focusin', 'touchstart'].forEach(ev => el.addEventListener(ev, stop, { passive: true }));
+      ['mouseleave', 'focusout', 'touchend'].forEach(ev => el.addEventListener(ev, poke, { passive: true }));
+      document.addEventListener('visibilitychange', () => document.hidden ? stop() : start());
+      el.addEventListener('scroll', () => { i = currentIndex(); updateDots(); }, { passive: true });
+      window.addEventListener('resize', () => go(i, false));
+
+      i = currentIndex();
+      updateDots();
+      start();
+    })();
+  </script>
+</body>
+</html>
